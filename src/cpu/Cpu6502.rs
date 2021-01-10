@@ -1,5 +1,6 @@
 use crate::bus::Bus;
-use crate::cpu::FLags::U;
+use crate::cpu::Flags::{U, I, B};
+use crate::cpu::Flags;
 
 struct Cpu {
     // Linkage to the communications bus
@@ -31,6 +32,7 @@ struct Cpu {
 }
 
 impl Cpu {
+
     pub fn new() -> Cpu {
         Cpu {
             bus: Bus::new(),
@@ -46,6 +48,22 @@ impl Cpu {
             stkp: 0x00,
             status: 0x00,
             fetched: 0x00,
+        }
+    }
+
+    fn getFlag(&mut self, f: Flags) -> bool {
+        return if (self.status & f as u8) > 0 {
+            true
+        } else {
+            false
+        }
+    }
+
+    fn setFlag(&mut self, f: Flags, v: bool) {
+        if v {
+            self.status |= (f as u8);
+        } else {
+            self.status &= !(f as u8);
         }
     }
 
@@ -78,5 +96,79 @@ impl Cpu {
 
         // Reset takes time
         self.cycles = 8;
+    }
+
+    fn irq(&mut self) {
+        if self.getFlag(I) == false {
+            self.write(0x0100 + self.stkp as u16, ((self.pc >> 8) & 0x00FF) as u8);
+            self.stkp -= 1;
+            self.write(0x0100 + self.stkp as u16, (self.pc & 0x00FF) as u8);
+            self.stkp -= 1;
+            self.setFlag(B, false);
+            self.setFlag(U, true);
+            self.setFlag(I, true);
+            self.write(0x0100 + self.stkp as u16, self.status);
+            self.stkp -= 1;
+            // Read new program counter location from fixed address
+            self.addr_abs = 0xFFFE;
+            let lo = self.read(self.addr_abs + 0);
+            let hi = self.read(self.addr_abs + 1);
+            self.pc = ((hi << 8) | lo) as u16;
+
+            // IRQs take time
+            self.cycles = 7;
+        }
+    }
+
+    fn nmi(&mut self) {
+        self.write(0x0100 + self.stkp as u16, ((self.pc >> 8) & 0x00FF) as u8);
+        self.stkp -= 1;
+        self.write(0x0100 + self.stkp as u16, (self.pc & 0x00FF) as u8);
+        self.stkp -= 1;
+        self.setFlag(B, false);
+        self.setFlag(U, true);
+        self.setFlag(I, true);
+
+        self.write(0x0100 + self.stkp as u16, self.status);
+        self.stkp -= 1;
+        self.addr_abs = 0xFFFA;
+        let lo = self.read(self.addr_abs + 0);
+        let hi = self.read(self.addr_abs + 1);
+
+        self.pc = ((hi << 8) | lo) as u16;
+
+        self.cycles = 8;
+    }
+
+    fn imp(&mut self) -> bool {
+        self.fetched = self.a;
+        false
+    }
+
+    fn imm(&mut self) -> bool {
+        self.pc += 1;
+        self.addr_abs = self.pc;
+        false
+    }
+
+    fn zp0(&mut self) -> bool {
+        self.addr_abs = self.read(self.pc) as u16;
+        self.pc += 1;
+        self.addr_abs &= 0x00FF;
+        false
+    }
+
+    fn zpx(&mut self) -> bool {
+        self.addr_abs = (self.read(self.pc) + self.x) as u16;
+        self.pc += 1;
+        self.addr_abs &= 0x00FF;
+        false
+    }
+
+    fn zpy(&mut self) -> bool {
+        self.addr_abs = (self.read(self.pc) + self.y) as u16;
+        self.pc += 1;
+        self.addr_abs &= 0x00FF;
+        false
     }
 }

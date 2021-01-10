@@ -1,7 +1,7 @@
 mod Cpu6502;
 mod fn_ptr;
 
-enum FLags
+enum Flags
 {
     // Carry Bit
     C = (1 << 0),
