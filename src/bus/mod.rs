@@ -16,7 +16,7 @@ impl Bus {
         }
     }
 
-    pub fn read(&mut self, addr: u16, read_only: bool) -> u8 {
+    pub fn read(&mut self, addr: u16, _read_only: bool) -> u8 {
         if addr >= 0x0000 && addr <= 0xFFFF {
             return self.ram[addr as usize];
         }
