@@ -812,7 +812,7 @@ impl Cpu {
     fn ror(&mut self) -> bool {
         self.fetch();
 
-        let temp = ((self.get_flag(C) as u16) << 7) | (self.fetched >> 1);
+        let temp = ((self.get_flag(C) as u16) << 7) | (self.fetched as u16 >> 1);
 
         self.set_flag(C, (self.fetched & 0x01) > 0);
 
