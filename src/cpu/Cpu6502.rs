@@ -1,5 +1,5 @@
 use crate::bus::Bus;
-use crate::cpu::Flags::{U, I, B, C, Z, V, N};
+use crate::cpu::Flags::{U, I, B, C, Z, V, N, D};
 use crate::cpu::{Flags, Opcodes, AddressModes};
 
 struct Cpu {
@@ -77,7 +77,7 @@ impl Cpu {
         }
     }
 
-    fn getFlag(&mut self, f: Flags) -> bool {
+    fn get_flag(&mut self, f: Flags) -> bool {
         return if (self.status & f as u8) > 0 {
             true
         } else {
@@ -85,7 +85,7 @@ impl Cpu {
         }
     }
 
-    fn setFlag(&mut self, f: Flags, v: bool) {
+    fn set_flag(&mut self, f: Flags, v: bool) {
         if v {
             self.status |= f as u8;
         } else {
@@ -132,14 +132,14 @@ impl Cpu {
     }
 
     fn irq(&mut self) {
-        if self.getFlag(I) == false {
+        if self.get_flag(I) == false {
             self.write(0x0100 + self.stkp as u16, ((self.pc >> 8) & 0x00FF) as u8);
             self.stkp -= 1;
             self.write(0x0100 + self.stkp as u16, (self.pc & 0x00FF) as u8);
             self.stkp -= 1;
-            self.setFlag(B, false);
-            self.setFlag(U, true);
-            self.setFlag(I, true);
+            self.set_flag(B, false);
+            self.set_flag(U, true);
+            self.set_flag(I, true);
             self.write(0x0100 + self.stkp as u16, self.status);
             self.stkp -= 1;
             // Read new program counter location from fixed address
@@ -158,9 +158,9 @@ impl Cpu {
         self.stkp -= 1;
         self.write(0x0100 + self.stkp as u16, (self.pc & 0x00FF) as u8);
         self.stkp -= 1;
-        self.setFlag(B, false);
-        self.setFlag(U, true);
-        self.setFlag(I, true);
+        self.set_flag(B, false);
+        self.set_flag(U, true);
+        self.set_flag(I, true);
 
         self.write(0x0100 + self.stkp as u16, self.status);
         self.stkp -= 1;
@@ -306,15 +306,15 @@ impl Cpu {
     fn adc(&mut self) -> bool {
         self.fetch();
 
-        let temp = self.a as u16 + self.fetched as u16 + self.getFlag(C) as u16;
+        let temp = self.a as u16 + self.fetched as u16 + self.get_flag(C) as u16;
 
-        self.setFlag(C, temp > 255);
+        self.set_flag(C, temp > 255);
 
-        self.setFlag(Z, (temp & 0x00FF) == 0);
+        self.set_flag(Z, (temp & 0x00FF) == 0);
 
-        self.setFlag(V, (!(self.a as u16 ^ self.fetched as u16) & (self.a as u16 ^ temp)) & 0x0080 > 0);
+        self.set_flag(V, (!(self.a as u16 ^ self.fetched as u16) & (self.a as u16 ^ temp)) & 0x0080 > 0);
 
-        self.setFlag(N, temp & 0x80 > 0);
+        self.set_flag(N, temp & 0x80 > 0);
 
         self.a = (temp & 0x00FF) as u8;
 
@@ -326,25 +326,154 @@ impl Cpu {
 
         let value = self.fetched as u16 ^ 0x00FF;
 
-        let temp = self.a as u16 + value + self.getFlag(C) as u16;
+        let temp = self.a as u16 + value + self.get_flag(C) as u16;
 
-        self.setFlag(C, (temp & 0xFF00) > 0);
+        self.set_flag(C, (temp & 0xFF00) > 0);
 
-        self.setFlag(Z, (temp & 0x00FF) == 0);
+        self.set_flag(Z, (temp & 0x00FF) == 0);
 
-        self.setFlag(V, ((temp ^ self.a as u16) & (temp ^ value) & 0x0080) > 0);
+        self.set_flag(V, ((temp ^ self.a as u16) & (temp ^ value) & 0x0080) > 0);
 
-        self.setFlag(N, temp & 0x0080 > 0);
+        self.set_flag(N, temp & 0x0080 > 0);
 
         self.a = (temp & 0x00FF) as u8;
 
         return true;
     }
 
+    fn and(&mut self) -> bool {
+        self.fetch();
+
+        self.a = self.a & self.fetched;
+
+        self.set_flag(Z, self.a == 0x00);
+
+        self.set_flag(N, self.a & 0x80 > 0);
+
+        return true;
+    }
+
+    fn asl(&mut self) -> bool {
+        self.fetch();
+
+        let temp = (self.fetched << 1) as u16;
+
+        self.set_flag(C, (temp & 0xFF00) > 0);
+
+        self.set_flag(Z, (temp & 0x00FF) == 0x00);
+
+        self.set_flag(N, (temp & 0x80) > 0);
+
+        if self.lookup[self.opcode as usize].addr == AddressModes::Imp {
+            self.a = (temp & 0x00FF) as u8;
+        } else {
+            self.write(self.addr_abs, (temp & 0x00FF) as u8);
+        }
+
+        return false;
+    }
+
+    fn bcc(&mut self) -> bool {
+        if self.get_flag(C) == false {
+            self.cycles += 1;
+            self.addr_abs = self.pc + self.addr_abs;
+
+            if self.addr_abs & 0xFF00 != self.pc & 0xFF00 {
+                self.cycles += 1;
+            }
+            self.pc = self.addr_abs;
+        }
+
+        return false;
+    }
+
+    fn bcs(&mut self) -> bool {
+        if self.get_flag(C) == true {
+            self.cycles += 1;
+            self.addr_abs = self.pc + self.addr_abs;
+
+            if self.addr_abs & 0xFF00 != self.pc & 0xFF00 {
+                self.cycles += 1;
+            }
+            self.pc = self.addr_abs;
+        }
+
+        return false;
+    }
+
+    fn beq(&mut self) -> bool {
+        if self.get_flag(Z) == true {
+            self.cycles += 1;
+            self.addr_abs = self.pc + self.addr_abs;
+
+            if self.addr_abs & 0xFF00 != self.pc & 0xFF00 {
+                self.cycles += 1;
+            }
+            self.pc = self.addr_abs;
+        }
+
+        return false;
+    }
+
+    fn bmi(&mut self) -> bool {
+        if self.get_flag(N) == true {
+            self.cycles += 1;
+            self.addr_abs = self.pc + self.addr_abs;
+
+            if self.addr_abs & 0xFF00 != self.pc & 0xFF00 {
+                self.cycles += 1;
+            }
+            self.pc = self.addr_abs;
+        }
+
+        return false;
+    }
+
+    fn bne(&mut self) -> bool {
+        if self.get_flag(Z) == false {
+            self.cycles += 1;
+            self.addr_abs = self.pc + self.addr_abs;
+
+            if self.addr_abs & 0xFF00 != self.pc & 0xFF00 {
+                self.cycles += 1;
+            }
+            self.pc = self.addr_abs;
+        }
+
+        return false;
+    }
+
+    fn bpl(&mut self) -> bool {
+        if self.get_flag(N) == false {
+            self.cycles += 1;
+            self.addr_abs = self.pc + self.addr_abs;
+
+            if self.addr_abs & 0xFF00 != self.pc & 0xFF00 {
+                self.cycles += 1;
+            }
+            self.pc = self.addr_abs;
+        }
+
+        return false;
+    }
+
+
+
+    fn bit(&mut self) -> bool {
+        self.fetch();
+
+        let temp = self.a & self.fetched;
+        self.set_flag(Z, (temp & 0x00FF) == 0x00);
+        self.set_flag(N, self.fetched & (1 << 7) > 0);
+        self.set_flag(V, self.fetched & (1 << 6) > 0);
+
+        return false;
+    }
+
     fn brk(&mut self) -> bool {
         self.pc += 1;
 
-        self.setFlag(I, true);
+        self.set_flag(I, true);
 
         self.write((0x0100 + self.stkp as u16) as u16, ((self.pc >> 8) & 0x00FF) as u8);
 
@@ -353,15 +482,349 @@ impl Cpu {
         self.write((0x0100 + self.stkp as u16) as u16, (self.pc & 0x00FF) as u8);
         self.stkp -= 1;
 
-        self.setFlag(B, true);
+        self.set_flag(B, true);
 
         self.write((0x0100 + self.stkp as u16) as u16, self.status);
 
         self.stkp -= 1;
 
-        self.setFlag(B, false);
+        self.set_flag(B, false);
 
         self.pc = self.read(0xFFFE) as u16 | (self.read(0xFFFF) << 8) as u16;
+
+        return false;
+    }
+
+    fn bvc(&mut self) -> bool {
+        if self.get_flag(V) == false {
+            self.cycles += 1;
+            self.addr_abs = self.pc + self.addr_abs;
+
+            if self.addr_abs & 0xFF00 != self.pc & 0xFF00 {
+                self.cycles += 1;
+            }
+            self.pc = self.addr_abs;
+        }
+
+        return false;
+    }
+
+    fn bvs(&mut self) -> bool {
+        if self.get_flag(V) == true {
+            self.cycles += 1;
+            self.addr_abs = self.pc + self.addr_abs;
+
+            if self.addr_abs & 0xFF00 != self.pc & 0xFF00 {
+                self.cycles += 1;
+            }
+            self.pc = self.addr_abs;
+        }
+
+        return false;
+    }
+
+    fn clc(&mut self) -> bool {
+        self.set_flag(C, false);
+        return false;
+    }
+
+    fn cld(&mut self) -> bool {
+        self.set_flag(D, false);
+        return false;
+    }
+
+    fn cli(&mut self) -> bool {
+        self.set_flag(I, false);
+        return false;
+    }
+
+    fn clv(&mut self) -> bool {
+        self.set_flag(V, false);
+        return false;
+    }
+
+    fn cmp(&mut self) -> bool {
+        self.fetch();
+
+        let temp = self.a as u16 - self.fetched as u16;
+
+        self.set_flag(C, self.a >= self.fetched);
+
+        self.set_flag(Z, (temp & 0x00FF) == 0x0000);
+
+        self.set_flag(N, temp & 0x0080 > 0);
+
+        return true;
+    }
+
+    fn cpx(&mut self) -> bool {
+        self.fetch();
+
+        let temp = self.x as u16 - self.fetched as u16;
+
+        self.set_flag(C, self.x >= self.fetched);
+
+        self.set_flag(Z, (temp & 0x00FF) == 0x0000);
+
+        self.set_flag(N, temp & 0x0080 > 0);
+
+        return false;
+    }
+
+    fn cpy(&mut self) -> bool {
+        self.fetch();
+
+        let temp = self.y as u16 - self.fetched as u16;
+
+        self.set_flag(C, self.y >= self.fetched);
+
+        self.set_flag(Z, (temp & 0x00FF) == 0x0000);
+
+        self.set_flag(N, temp & 0x0080 > 0);
+
+        return false;
+    }
+
+    fn dec(&mut self) -> bool {
+        self.fetch();
+
+        let temp = self.fetched as u16 - 1;
+
+        self.set_flag(Z, (temp & 0x00FF) == 0x0000);
+
+        self.set_flag(N, temp & 0x0080 > 0);
+
+        return false;
+    }
+
+    fn dex(&mut self) -> bool {
+        self.x -= 1;
+
+        self.set_flag(Z, self.x == 0x00);
+
+        self.set_flag(N, self.x & 0x80 > 0);
+
+        return false;
+    }
+
+    fn dey(&mut self) -> bool {
+        self.y -= 1;
+
+        self.set_flag(Z, self.y == 0x00);
+
+        self.set_flag(N, self.y & 0x80 > 0);
+
+        return false;
+    }
+
+    fn eor(&mut self) -> bool {
+        self.fetch();
+
+        self.a = self.a ^ self.fetched;
+
+        self.set_flag(Z, self.a == 0x00);
+
+        self.set_flag(N, self.a & 0x80 > 0);
+
+        return true;
+    }
+
+    fn inc(&mut self) -> bool {
+        self.fetch();
+
+        let temp = self.fetched + 1;
+
+        self.write(self.addr_abs, temp & 0x00FF);
+
+        self.set_flag(Z, (temp & 0x00FF) == 0x0000);
+
+        self.set_flag(N, temp & 0x0080 > 0);
+
+        return false;
+    }
+
+    fn inx(&mut self) -> bool {
+        self.x += 1;
+
+        self.set_flag(Z, self.x == 0x00);
+
+        self.set_flag(N, self.x & 0x80 > 0);
+
+        return false;
+    }
+
+    fn iny(&mut self) -> bool {
+        self.y += 1;
+
+        self.set_flag(Z, self.y == 0x00);
+
+        self.set_flag(N, self.y & 0x80 > 0);
+
+        return false;
+    }
+
+    fn jmp(&mut self) -> bool {
+        self.pc = self.addr_abs;
+        return false;
+    }
+
+    fn jsr(&mut self) -> bool {
+        self.pc -= 1;
+        self.write(0x0100 + self.stkp as u16, ((self.pc >> 8) & 0x00FF) as u8);
+        self.stkp -= 1;
+        self.write(0x0100 + self.stkp as u16, (self.pc & 0x00FF) as u8);
+        self.stkp -= 1;
+
+        self.pc = self.addr_abs;
+        return false;
+    }
+
+    fn lda(&mut self) -> bool {
+        self.fetch();
+
+        self.a = self.fetched;
+
+        self.set_flag(Z, self.a == 0x00);
+
+        self.set_flag(N, self.a & 0x80 > 0);
+
+        return true;
+    }
+
+    fn ldx(&mut self) -> bool {
+        self.fetch();
+
+        self.x = self.fetched;
+
+        self.set_flag(Z, self.x == 0x00);
+
+        self.set_flag(N, self.x & 0x80 > 0);
+
+        return true;
+    }
+
+    fn ldy(&mut self) -> bool {
+        self.fetch();
+
+        self.y = self.fetched;
+
+        self.set_flag(Z, self.y == 0x00);
+
+        self.set_flag(N, self.y & 0x80 > 0);
+
+        return true;
+    }
+
+    fn lsr(&mut self) -> bool {
+        self.fetch();
+
+        self.set_flag(C, (self.fetched & 0x0001) > 0);
+
+        let temp = (self.fetched >> 1) as u16;
+
+        self.set_flag(Z, (temp & 0x00FF) == 0x0000);
+
+        self.set_flag(N, (temp & 0x0080) > 0);
+
+        if self.lookup[self.opcode as usize].addr == AddressModes::Imp {
+            self.a = (temp & 0x00FF) as u8;
+        } else {
+            self.write(self.addr_abs, (temp & 0x00FF) as u8);
+        }
+
+        return false;
+    }
+
+    fn nop(&mut self) -> bool {
+        match self.opcode {
+            0x1c | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => {
+                return true;
+            }
+            _ => {}
+        }
+        return false;
+    }
+
+    fn ora(&mut self) -> bool {
+        self.fetch();
+
+        self.a = self.a | self.fetched;
+
+        self.set_flag(Z, self.a == 0x00);
+
+        self.set_flag(N, self.a & 0x80 > 0);
+
+        return true;
+    }
+
+    fn pha(&mut self) -> bool {
+        self.write(0x0100 + self.stkp as u16, self.a);
+        self.stkp -= 1;
+
+        return false;
+    }
+
+    fn php(&mut self) -> bool {
+        self.write(0x0100 + self.stkp as u16, self.a | B as u8 | U as u8);
+        self.set_flag(B, false);
+        self.set_flag(U, false);
+        self.stkp -= 1;
+
+        return false;
+    }
+
+    fn pla(&mut self) -> bool {
+        self.stkp += 1;
+        self.a = self.read(0x0100 + self.stkp as u16);
+        self.set_flag(Z, self.a == 0x00);
+        self.set_flag(N, self.a & 0x80 > 0);
+
+        return false;
+    }
+
+    fn plp(&mut self) -> bool {
+        self.stkp += 1;
+        self.status = self.read(0x0100 + self.stkp as u16);
+        self.set_flag(U, true);
+        return false;
+    }
+
+    fn rol(&mut self) -> bool {
+        self.fetch();
+
+        let temp = (self.fetched as u16) << 1 | self.get_flag(C) as u16;
+
+        self.set_flag(C, (temp & 0xFF00) > 0);
+
+        self.set_flag(Z, (temp & 0x00FF) == 0x0000);
+
+        self.set_flag(N, (temp & 0x0080) > 0);
+
+        if self.lookup[self.opcode as usize].addr == AddressModes::Imp {
+            self.a = (temp & 0x00FF) as u8;
+        } else {
+            self.write(self.addr_abs, (temp & 0x00FF) as u8);
+        }
+
+        return false;
+    }
+
+    fn ror(&mut self) -> bool {
+        self.fetch();
+
+        let temp = ((self.get_flag(C) as u16) << 7) | (self.fetched >> 1);
+
+        self.set_flag(C, (self.fetched & 0x01) > 0);
+
+        self.set_flag(Z, (temp & 0x00FF) == 0x00);
+
+        self.set_flag(N, (temp & 0x0080) > 0);
+
+        if self.lookup[self.opcode as usize].addr == AddressModes::Imp {
+            self.a = (temp & 0x00FF) as u8;
+        } else {
+            self.write(self.addr_abs, (temp & 0x00FF) as u8);
+        }
 
         return false;
     }
