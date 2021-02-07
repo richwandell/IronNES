@@ -77,6 +77,103 @@ impl Cpu {
         }
     }
 
+    fn clock(&mut self) {
+        if self.cycles == 0 {
+            self.opcode = self.read(self.pc);
+            self.set_flag(U, true);
+            self.pc += 1;
+            self.cycles = self.lookup[self.opcode as usize].cycles as u8;
+
+            let additional_cycle1 = match self.lookup[self.opcode as usize].addr {
+                AddressModes::Imp => self.imp(),
+                AddressModes::Imm => self.imm(),
+                AddressModes::Rel => self.rel(),
+                AddressModes::Abs => self.abs(),
+                AddressModes::Izx => self.izx(),
+                AddressModes::Izy => self.izy(),
+                AddressModes::Zp0 => self.zp0(),
+                AddressModes::Zpx => self.zpx(),
+                AddressModes::Zpy => self.zpy(),
+                AddressModes::Aby => self.aby(),
+                AddressModes::Ind => self.ind(),
+                AddressModes::Abx => self.abx()
+            };
+
+            let additional_cycle2 = match self.lookup[self.opcode as usize].operate {
+                Opcodes::Brk => self.brk(),
+                Opcodes::Bpl => self.bpl(),
+                Opcodes::Jsr => self.jsr(),
+                Opcodes::Bmi => self.bmi(),
+                Opcodes::Rti => self.rti(),
+                Opcodes::Bvc => self.bvc(),
+                Opcodes::Rts => self.rts(),
+                Opcodes::Bvs => self.bvs(),
+                Opcodes::Nop => self.nop(),
+                Opcodes::Bcc => self.bcc(),
+                Opcodes::Ldy => self.ldy(),
+                Opcodes::Bcs => self.bcs(),
+                Opcodes::Cpy => self.cpy(),
+                Opcodes::Bne => self.bne(),
+                Opcodes::Cpx => self.cpx(),
+                Opcodes::Beq => self.beq(),
+                Opcodes::Ora => self.ora(),
+                Opcodes::And => self.and(),
+                Opcodes::Eor => self.eor(),
+                Opcodes::Adc => self.adc(),
+                Opcodes::Sta => self.sta(),
+                Opcodes::Lda => self.lda(),
+                Opcodes::Cmp => self.cmp(),
+                Opcodes::Sbc => self.sbc(),
+                Opcodes::Xxx => self.xxx(),
+                Opcodes::Ldx => self.ldx(),
+                Opcodes::Bit => self.bit(),
+                Opcodes::Sty => self.sty(),
+                Opcodes::Asl => self.asl(),
+                Opcodes::Rol => self.rol(),
+                Opcodes::Lsr => self.lsr(),
+                Opcodes::Ror => self.ror(),
+                Opcodes::Stx => self.stx(),
+                Opcodes::Dec => self.dec(),
+                Opcodes::Inc => self.inc(),
+                Opcodes::Php => self.php(),
+                Opcodes::Clc => self.clc(),
+                Opcodes::Plp => self.plp(),
+                Opcodes::Sec => self.sec(),
+                Opcodes::Pha => self.pha(),
+                Opcodes::Cli => self.cli(),
+                Opcodes::Pla => self.pla(),
+                Opcodes::Sei => self.sei(),
+                Opcodes::Dey => self.dey(),
+                Opcodes::Tya => self.tya(),
+                Opcodes::Tay => self.tay(),
+                Opcodes::Clv => self.clv(),
+                Opcodes::Iny => self.iny(),
+                Opcodes::Cld => self.cld(),
+                Opcodes::Inx => self.inx(),
+                Opcodes::Sed => self.sed(),
+                Opcodes::Txa => self.txa(),
+                Opcodes::Txs => self.txs(),
+                Opcodes::Tax => self.tax(),
+                Opcodes::Tsx => self.tsx(),
+                Opcodes::Dex => self.dex(),
+                Opcodes::Jmp => self.jmp()
+            };
+
+            self.cycles += additional_cycle1;
+            if additional_cycle2 {
+                self.cycles += 1;
+            }
+
+            self.set_flag(U, true);
+        }
+        self.clock_count += 1;
+        self.cycles -= 1;
+    }
+
+    fn complete(&mut self) -> bool {
+        return self.cycles == 0;
+    }
+
     fn get_flag(&mut self, f: Flags) -> bool {
         return if (self.status & f as u8) > 0 {
             true
@@ -173,48 +270,48 @@ impl Cpu {
         self.cycles = 8;
     }
 
-    fn imp(&mut self) -> bool {
+    fn imp(&mut self) -> u8 {
         self.fetched = self.a;
-        false
+        0
     }
 
-    fn imm(&mut self) -> bool {
+    fn imm(&mut self) -> u8 {
         self.pc += 1;
         self.addr_abs = self.pc;
-        false
+        0
     }
 
-    fn zp0(&mut self) -> bool {
+    fn zp0(&mut self) -> u8 {
         self.addr_abs = self.read(self.pc) as u16;
         self.pc += 1;
         self.addr_abs &= 0x00FF;
-        false
+        0
     }
 
-    fn zpx(&mut self) -> bool {
+    fn zpx(&mut self) -> u8 {
         self.addr_abs = (self.read(self.pc) + self.x) as u16;
         self.pc += 1;
         self.addr_abs &= 0x00FF;
-        false
+        0
     }
 
-    fn zpy(&mut self) -> bool {
+    fn zpy(&mut self) -> u8 {
         self.addr_abs = (self.read(self.pc) + self.y) as u16;
         self.pc += 1;
         self.addr_abs &= 0x00FF;
-        false
+        0
     }
 
-    fn rel(&mut self) -> bool {
+    fn rel(&mut self) -> u8 {
         self.addr_rel = self.read(self.pc) as u16;
         self.pc += 1;
         if self.addr_rel & 0x80 > 0 {
             self.addr_rel |= 0xFF00;
         }
-        return false;
+        return 0;
     }
 
-    fn abs(&mut self) -> bool {
+    fn abs(&mut self) -> u8 {
         let lo = self.read(self.pc) as u16;
         self.pc += 1;
         let hi = self.read(self.pc) as u16;
@@ -222,10 +319,10 @@ impl Cpu {
 
         self.addr_abs = (hi << 8) | lo;
 
-        return false;
+        return 0;
     }
 
-    fn abx(&mut self) -> bool {
+    fn abx(&mut self) -> u8 {
         let lo = self.read(self.pc) as u16;
         self.pc += 1;
         let hi = self.read(self.pc) as u16;
@@ -235,13 +332,13 @@ impl Cpu {
         self.addr_abs += self.x as u16;
 
         if (self.addr_abs & 0xFF00) != (hi << 8) {
-            return true;
+            return 1;
         } else {
-            return false;
+            return 0;
         }
     }
 
-    fn aby(&mut self) -> bool {
+    fn aby(&mut self) -> u8 {
         let lo = self.read(self.pc) as u16;
         self.pc += 1;
         let hi = self.read(self.pc) as u16;
@@ -251,13 +348,13 @@ impl Cpu {
         self.addr_abs += self.y as u16;
 
         if (self.addr_abs & 0xFF00) != (hi << 8) {
-            return true;
+            return 1;
         } else {
-            return false;
+            return 0;
         }
     }
 
-    fn ind(&mut self) -> bool {
+    fn ind(&mut self) -> u8 {
         let ptr_lo = self.read(self.pc) as u16;
         self.pc += 1;
         let ptr_hi = self.read(self.pc) as u16;
@@ -271,10 +368,10 @@ impl Cpu {
             self.addr_abs = ((self.read(ptr + 1) << 8) | self.read(ptr + 0)) as u16;
         }
 
-        return false;
+        return 0;
     }
 
-    fn izx(&mut self) -> bool {
+    fn izx(&mut self) -> u8 {
         let t = self.read(self.pc) as u16;
         self.pc += 1;
 
@@ -283,10 +380,10 @@ impl Cpu {
 
         self.addr_abs = (hi << 8) | lo;
 
-        return false;
+        return 0;
     }
 
-    fn izy(&mut self) -> bool {
+    fn izy(&mut self) -> u8 {
         let t = self.read(self.pc) as u16;
         self.pc += 1;
 
@@ -297,10 +394,10 @@ impl Cpu {
         self.addr_abs += self.y as u16;
 
         if self.addr_abs & 0xFF00 != (hi << 8) {
-            return true;
+            return 1;
         }
 
-        return false;
+        return 0;
     }
 
     fn adc(&mut self) -> bool {
@@ -826,6 +923,104 @@ impl Cpu {
             self.write(self.addr_abs, (temp & 0x00FF) as u8);
         }
 
+        return false;
+    }
+
+    fn rti(&mut self) -> bool {
+        self.stkp += 1;
+        self.status = self.read(0x0100 + self.stkp as u16);
+        self.status &= !(B as u8);
+        self.status &= !(U as u8);
+        self.stkp += 1;
+        self.pc = self.read(0x0100 + self.stkp as u16) as u16;
+        self.stkp += 1;
+        self.pc |= (self.read(0x0100 + self.stkp as u16) << 8) as u16;
+
+        return false;
+    }
+
+    fn rts(&mut self) -> bool {
+        self.stkp += 1;
+        self.pc = self.read(0x0100 + self.stkp as u16) as u16;
+        self.stkp += 1;
+        self.pc |= (self.read(0x0100 + self.stkp as u16) << 8) as u16;
+
+        self.pc += 1;
+
+        return false;
+    }
+
+    fn sec(&mut self) -> bool {
+        self.set_flag(C, true);
+        return false;
+    }
+
+    fn sed(&mut self) -> bool {
+        self.set_flag(D, true);
+        return false;
+    }
+
+    fn sei(&mut self) -> bool {
+        self.set_flag(I, true);
+        return false;
+    }
+
+    fn sta(&mut self) -> bool {
+        self.write(self.addr_abs, self.a);
+        return false;
+    }
+
+    fn stx(&mut self) -> bool {
+        self.write(self.addr_abs, self.x);
+        return false;
+    }
+
+    fn sty(&mut self) -> bool {
+        self.write(self.addr_abs, self.y);
+        return false;
+    }
+
+    fn tax(&mut self) -> bool {
+        self.x = self.a;
+        self.set_flag(Z, self.x == 0x00);
+        self.set_flag(N, (self.x & 0x80) > 0);
+        return false;
+    }
+
+    fn tay(&mut self) -> bool {
+        self.y = self.a;
+        self.set_flag(Z, self.y == 0x00);
+        self.set_flag(N, (self.y & 0x80) > 0);
+        return false;
+    }
+
+    fn tsx(&mut self) -> bool {
+        self.x = self.stkp;
+        self.set_flag(Z, self.x == 0x00);
+        self.set_flag(N, (self.x & 0x80) > 0);
+        return false;
+    }
+
+    fn txa(&mut self) -> bool {
+        self.a = self.x;
+        self.set_flag(Z, self.a == 0x00);
+        self.set_flag(N, (self.a & 0x80) > 0);
+        return false;
+    }
+
+    fn txs(&mut self) -> bool {
+        self.stkp = self.x;
+        return false;
+    }
+
+    fn tya(&mut self) -> bool {
+        self.a = self.y;
+        self.set_flag(Z, self.a == 0x00);
+        self.set_flag(N, (self.a & 0x80) > 0);
+        return false;
+    }
+
+    fn xxx(&mut self) -> bool {
         return false;
     }
 }
