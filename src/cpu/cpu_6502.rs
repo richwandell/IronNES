@@ -2,9 +2,9 @@ use crate::bus::Bus;
 use crate::cpu::Flags::{U, I, B, C, Z, V, N, D};
 use crate::cpu::{Flags, Opcodes, AddressModes};
 
-struct Cpu {
+pub(crate) struct Cpu {
     // Linkage to the communications bus
-    bus: Bus,
+    pub(crate) bus: Bus,
     // All used memory addresses end up in here
     addr_abs: u16,
     // Represents absolute address following a branch
@@ -12,11 +12,11 @@ struct Cpu {
     // Is the instruction byte
     opcode: u8,
     // Counts how many cycles the instruction has remaining
-    cycles: u8,
+    pub(crate) cycles: u8,
     // A global accumulation of the number of clocks
     clock_count: u32,
     // Program Counter
-    pc: u16,
+    pub(crate) pc: u16,
     // Accumulator Register
     a: u8,
     // X Register
@@ -26,12 +26,13 @@ struct Cpu {
     // Stack Pointer (points to location on bus)
     stkp: u8,
     // Status Register
-    status: u8,
+    pub(crate) status: u8,
     // Represents the working input value to the ALU
     fetched: u8,
     lookup: Vec<Instruction>
 }
 
+#[allow(dead_code)]
 struct Instruction {
     name: String,
     operate: Opcodes,
@@ -39,11 +40,12 @@ struct Instruction {
     cycles: usize
 }
 
+#[allow(arithmetic_overflow, dead_code)]
 impl Cpu {
 
-    pub fn new() -> Cpu {
+    pub fn new(bus: Bus) -> Cpu {
         Cpu {
-            bus: Bus::new(),
+            bus,
             addr_abs: 0x0000,
             addr_rel: 0x00,
             opcode: 0x00,
@@ -77,7 +79,7 @@ impl Cpu {
         }
     }
 
-    fn clock(&mut self) {
+    pub(crate) fn clock(&mut self) {
         if self.cycles == 0 {
             self.opcode = self.read(self.pc);
             self.set_flag(U, true);
@@ -182,7 +184,7 @@ impl Cpu {
         }
     }
 
-    fn set_flag(&mut self, f: Flags, v: bool) {
+    pub(crate) fn set_flag(&mut self, f: Flags, v: bool) {
         if v {
             self.status |= f as u8;
         } else {
@@ -276,8 +278,8 @@ impl Cpu {
     }
 
     fn imm(&mut self) -> u8 {
-        self.pc += 1;
         self.addr_abs = self.pc;
+        self.pc += 1;
         0
     }
 
@@ -354,6 +356,7 @@ impl Cpu {
         }
     }
 
+    #[allow(arithmetic_overflow)]
     fn ind(&mut self) -> u8 {
         let ptr_lo = self.read(self.pc) as u16;
         self.pc += 1;
@@ -554,8 +557,6 @@ impl Cpu {
         return false;
     }
 
-
-
     fn bit(&mut self) -> bool {
         self.fetch();
 
@@ -567,6 +568,7 @@ impl Cpu {
         return false;
     }
 
+    #[allow(arithmetic_overflow)]
     fn brk(&mut self) -> bool {
         self.pc += 1;
 
@@ -620,6 +622,9 @@ impl Cpu {
         return false;
     }
 
+    /**
+     * Clear cary
+     */
     fn clc(&mut self) -> bool {
         self.set_flag(C, false);
         return false;
@@ -685,7 +690,9 @@ impl Cpu {
     fn dec(&mut self) -> bool {
         self.fetch();
 
-        let temp = self.fetched as u16 - 1;
+        let temp = self.fetched - 1;
+
+        self.write(self.addr_abs, temp & 0x00FF);
 
         self.set_flag(Z, (temp & 0x00FF) == 0x0000);
 
@@ -776,6 +783,9 @@ impl Cpu {
         return false;
     }
 
+    /**
+    * Load accumulator
+    */
     fn lda(&mut self) -> bool {
         self.fetch();
 
@@ -939,11 +949,27 @@ impl Cpu {
         return false;
     }
 
+    /**
+    * Return to subroutine
+    * https://sites.google.com/site/6502asembly/6502-instruction-set/rts
+    uint8_t olc6502::RTS()
+    {
+    	stkp++;
+    	pc = (uint16_t)read(0x0100 + stkp);
+    	stkp++;
+    	pc |= (uint16_t)read(0x0100 + stkp) << 8;
+
+    	pc++;
+    	return 0;
+    }
+    */
     fn rts(&mut self) -> bool {
         self.stkp += 1;
         self.pc = self.read(0x0100 + self.stkp as u16) as u16;
         self.stkp += 1;
-        self.pc |= (self.read(0x0100 + self.stkp as u16) << 8) as u16;
+
+        let tmp = (self.read(0x0100 + self.stkp as u16) as u16) << 8;
+        self.pc |= tmp;
 
         self.pc += 1;
 

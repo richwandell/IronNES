@@ -1,8 +1,8 @@
-mod Cpu6502;
-mod fn_ptr;
+mod cpu_6502;
+mod tests;
 
 #[derive(Clone, Debug, PartialEq)]
-enum Flags
+pub(crate) enum Flags
 {
     // Carry Bit
     C = (1 << 0),
