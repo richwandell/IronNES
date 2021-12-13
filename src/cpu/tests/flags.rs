@@ -1,11 +1,11 @@
 use crate::bus::Bus;
 use crate::cpu::cpu_6502::Cpu;
 use crate::cpu::Flags::{I, B, C, Z, V, N, D};
+use crate::cpu::tests::create_cpu;
 
 #[test]
 fn test_flags() {
-    let bus = Bus::new();
-    let mut cpu = Cpu::new(bus);
+    let mut cpu = create_cpu();
 
     cpu.set_flag(C, true);
     assert_eq!(cpu.status, 1);

@@ -1,4 +1,4 @@
-mod cpu_6502;
+pub(crate) mod cpu_6502;
 mod tests;
 
 #[derive(Clone, Debug, PartialEq)]

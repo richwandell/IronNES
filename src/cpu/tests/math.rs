@@ -1,5 +1,6 @@
 use crate::bus::Bus;
 use crate::cpu::cpu_6502::Cpu;
+use crate::cpu::tests::create_cpu;
 
 #[test]
 fn test_increment_and_decrement_numbers() {
@@ -28,10 +29,8 @@ stx $0301
         0x01, 0x8E, 0x01, 0x03
     ];
     let end = code.len().clone();
-    let mut bus = Bus::new();
-    bus.load(code);
-
-    let mut cpu = Cpu::new(bus);
+    let mut cpu = create_cpu();
+    cpu.bus.load(code);
 
     loop {
         cpu.clock();
@@ -40,10 +39,10 @@ stx $0301
         }
     }
 
-    assert_eq!(cpu.bus.ram[0], 11);
-    assert_eq!(cpu.bus.ram[1], 9);
-    assert_eq!(cpu.bus.ram[768], 11);
-    assert_eq!(cpu.bus.ram[769], 9);
+    assert_eq!(cpu.bus.cpu_ram[0], 11);
+    assert_eq!(cpu.bus.cpu_ram[1], 9);
+    assert_eq!(cpu.bus.cpu_ram[768], 11);
+    assert_eq!(cpu.bus.cpu_ram[769], 9);
 }
 
 #[test]
@@ -74,10 +73,8 @@ sta $03
         0x00, 0x69, 0x00, 0x85, 0x03
     ];
     let end = code.len().clone();
-    let mut bus = Bus::new();
-    bus.load(code);
-
-    let mut cpu = Cpu::new(bus);
+    let mut cpu = create_cpu();
+    cpu.bus.load(code);
 
     loop {
         cpu.clock();
@@ -86,6 +83,6 @@ sta $03
         }
     }
 
-    assert_eq!(cpu.bus.ram[2], 30);
-    assert_eq!(cpu.bus.ram[3], 0);
+    assert_eq!(cpu.bus.cpu_ram[2], 30);
+    assert_eq!(cpu.bus.cpu_ram[3], 0);
 }

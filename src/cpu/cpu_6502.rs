@@ -193,11 +193,11 @@ impl Cpu {
     }
 
     fn read(&mut self, a: u16) -> u8 {
-        return self.bus.read(a, false);
+        return self.bus.cpu_read(a, false);
     }
 
     fn write(&mut self, a: u16, d: u8) {
-        self.bus.write(a, d);
+        self.bus.cpu_write(a, d);
     }
 
     fn reset(&mut self) {
