@@ -98,3 +98,13 @@ enum AddressModes {
     Ind,
     Abx
 }
+
+macro_rules! create_cpu {
+    ($var1:ident) => {
+        let mut ppu = crate::ppu::Ppu::new();
+        let mut bus = crate::bus::Bus::new(&mut ppu);
+        let mut $var1 = crate::cpu::cpu_6502::Cpu::new(&mut bus);
+    };
+}
+
+pub(crate) use create_cpu;

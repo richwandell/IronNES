@@ -2,9 +2,9 @@ use crate::bus::Bus;
 use crate::cpu::Flags::{U, I, B, C, Z, V, N, D};
 use crate::cpu::{Flags, Opcodes, AddressModes};
 
-pub(crate) struct Cpu {
+pub(crate) struct Cpu<'a> {
     // Linkage to the communications bus
-    pub(crate) bus: Bus,
+    pub(crate) bus: &'a mut Bus<'a>,
     // All used memory addresses end up in here
     addr_abs: u16,
     // Represents absolute address following a branch
@@ -41,9 +41,9 @@ struct Instruction {
 }
 
 #[allow(arithmetic_overflow, dead_code)]
-impl Cpu {
+impl Cpu<'_> {
 
-    pub fn new(bus: Bus) -> Cpu {
+    pub fn new<'a>(bus: &'a mut Bus<'a>) -> Cpu<'a> {
         Cpu {
             bus,
             addr_abs: 0x0000,

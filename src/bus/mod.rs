@@ -1,13 +1,13 @@
 use crate::ppu::Ppu;
 
-pub struct Bus {
-    pub(crate) ppu: Ppu,
+pub struct Bus<'a> {
+    pub(crate) ppu: &'a mut Ppu,
     pub(crate) cpu_ram: Vec<u8>
 }
 
-impl Bus {
+impl Bus<'_> {
 
-    pub fn new(ppu: Ppu) -> Bus {
+    pub fn new(ppu: &mut Ppu) -> Bus {
         Bus {
             ppu,
             cpu_ram: vec![0; 2048]

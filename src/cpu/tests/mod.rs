@@ -5,7 +5,5 @@ use crate::ppu::Ppu;
 mod flags;
 mod math;
 
-pub(crate) fn create_cpu() -> Cpu {
-    return Cpu::new(Bus::new(Ppu::new()))
-}
+
 
