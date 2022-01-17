@@ -1,9 +1,19 @@
+use std::borrow::BorrowMut;
+use std::cell::Ref;
 use crate::bus::Bus;
 use crate::cpu::cpu_6502::Cpu;
-use crate::cpu::create_cpu;
+use crate::cpu::{cpu_loop, real_loop};
+use crate::cpu::tests::create_devices;
 use crate::ppu::Ppu;
+use crate::state::State;
 
-
+fn run_test_code(code: Vec<u8>) -> Vec<u8> {
+    create_devices!(ppu, cpu);
+    cpu.get_state_mut().load(code);
+    real_loop(&mut ppu, &mut cpu);
+    let state = cpu.get_state();
+    state.cpu_ram.clone()
+}
 
 #[test]
 fn test_increment_and_decrement_numbers() {
@@ -31,23 +41,11 @@ stx $0301
         0xC6, 0x01, 0xA6, 0x00, 0x8E, 0x00, 0x03, 0xA6,
         0x01, 0x8E, 0x01, 0x03
     ];
-    let end = code.len().clone();
-
-    create_cpu!(cpu);
-
-    cpu.bus.load(code);
-
-    loop {
-        cpu.clock();
-        if cpu.pc as usize == end && cpu.cycles == 0 {
-            break;
-        }
-    }
-
-    assert_eq!(cpu.bus.cpu_ram[0], 11);
-    assert_eq!(cpu.bus.cpu_ram[1], 9);
-    assert_eq!(cpu.bus.cpu_ram[768], 11);
-    assert_eq!(cpu.bus.cpu_ram[769], 9);
+    let cpu_ram = run_test_code(code);
+    assert_eq!(cpu_ram[0], 11);
+    assert_eq!(cpu_ram[1], 9);
+    assert_eq!(cpu_ram[768], 11);
+    assert_eq!(cpu_ram[769], 9);
 }
 
 #[test]
@@ -77,19 +75,9 @@ sta $03
         0xA5, 0x00, 0x18, 0x65, 0x01, 0x85, 0x02, 0xA9,
         0x00, 0x69, 0x00, 0x85, 0x03
     ];
-    let end = code.len().clone();
-    create_cpu!(cpu);
-    cpu.bus.load(code);
-
-    loop {
-        cpu.clock();
-        if cpu.pc as usize == end && cpu.cycles == 0 {
-            break;
-        }
-    }
-
-    assert_eq!(cpu.bus.cpu_ram[2], 30);
-    assert_eq!(cpu.bus.cpu_ram[3], 0);
+    let cpu_ram = run_test_code(code);
+    assert_eq!(cpu_ram[2], 30);
+    assert_eq!(cpu_ram[3], 0);
 }
 
 #[test]
@@ -113,20 +101,10 @@ sta $01
         0x18, 0xA9, 0x14, 0x69, 0xF0, 0x85, 0x00, 0xA9,
         0x00, 0x69, 0x00, 0x85, 0x01,
     ];
-    let end = code.len().clone();
-    create_cpu!(cpu);
-    cpu.bus.load(code);
-
-    loop {
-        cpu.clock();
-        if cpu.pc as usize == end && cpu.cycles == 0 {
-            break;
-        }
-    }
-
-    assert_eq!(cpu.bus.cpu_ram[0], 4);
-    assert_eq!(cpu.bus.cpu_ram[1], 1);
-    let final_num = 256 * cpu.bus.cpu_ram[1] as u16 + (cpu.bus.cpu_ram[0] as u16);
+    let cpu_ram = run_test_code(code);
+    assert_eq!(cpu_ram[0], 4);
+    assert_eq!(cpu_ram[1], 1);
+    let final_num = 256 * cpu_ram[1] as u16 + (cpu_ram[0] as u16);
     assert_eq!(final_num, 260);
 }
 
@@ -153,18 +131,8 @@ sta $01
         0x18, 0xA9, 0xF4, 0x69, 0xBC, 0x85, 0x00, 0xA9,
         0x01, 0x69, 0x02, 0x85, 0x01,
     ];
-    let end = code.len().clone();
-    create_cpu!(cpu);
-    cpu.bus.load(code);
-
-    loop {
-        cpu.clock();
-        if cpu.pc as usize == end && cpu.cycles == 0 {
-            break;
-        }
-    }
-
-    let final_num = 256 * cpu.bus.cpu_ram[1] as u16 + (cpu.bus.cpu_ram[0] as u16);
+    let cpu_ram = run_test_code(code);
+    let final_num = 256 * cpu_ram[1] as u16 + (cpu_ram[0] as u16);
     assert_eq!(final_num, 1200);
 }
 
@@ -189,17 +157,7 @@ sta $01
         0x38, 0xA9, 0xBC, 0xE9, 0xF4, 0x85, 0x00, 0xA9,
         0x02, 0xE9, 0x01, 0x85, 0x01,
     ];
-    let end = code.len().clone();
-    create_cpu!(cpu);
-    cpu.bus.load(code);
-
-    loop {
-        cpu.clock();
-        if cpu.pc as usize == end && cpu.cycles == 0 {
-            break;
-        }
-    }
-
-    let final_num = 256 * cpu.bus.cpu_ram[1] as u16 + (cpu.bus.cpu_ram[0] as u16);
+    let cpu_ram = run_test_code(code);
+    let final_num = 256 * cpu_ram[1] as u16 + (cpu_ram[0] as u16);
     assert_eq!(final_num, 200);
 }

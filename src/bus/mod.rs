@@ -1,43 +1,56 @@
+use std::cell::{RefCell, RefMut};
+use std::rc::Rc;
+use crate::cpu::cpu_6502::Cpu;
 use crate::ppu::Ppu;
+use crate::state::State;
 
-pub struct Bus<'a> {
-    pub(crate) ppu: &'a mut Ppu,
-    pub(crate) cpu_ram: Vec<u8>
+pub(crate) fn cpu_read(state: &mut State, addr: u16, read_only: bool) -> u8 {
+    let mut data: u8 = 0x00;
+    if addr >= 0x0000 && addr <= 0x1FFF {
+        data = state.cpu_ram[addr as usize & 0x07ff];
+    } else if addr >= 0x2000 && addr <= 0x3fff {
+        data = state.ppu_ram[addr as usize & 0x0007];
+    }
+    return data;
 }
 
-impl Bus<'_> {
+pub(crate) fn cpu_write(state: &mut State, addr: u16, data: u8) {
+    if  addr >= 0x0000 && addr <= 0x1FFF {
+        state.cpu_ram[addr as usize & 0x07ff] = data;
+    } else if addr >= 0x2000 && addr <= 0x3fff {
+        state.ppu_ram[addr as usize & 0x0007] = data;
+    }
+}
 
-    pub fn new(ppu: &mut Ppu) -> Bus {
+pub(crate) fn reset(state: &mut State, ppu: &mut Ppu, cpu: &mut Cpu) {
+    cpu.reset();
+    state.n_system_clock_counter = 0;
+}
+
+pub(crate) fn clock(ppu: &mut Ppu, cpu: &mut Cpu) -> Result<(), ()>{
+    ppu.clock();
+    if cpu.get_state_mut().n_system_clock_counter % 3 == 0 {
+        if let Err(_) = cpu.clock() {
+            return Err(());
+        }
+    }
+    cpu.get_state_mut().n_system_clock_counter += 1;
+    return Ok(());
+}
+
+pub struct Bus {
+    pub(crate) cpu: Option<Rc<RefCell<Cpu>>>,
+    pub(crate) ppu: Option<Rc<RefCell<Ppu>>>,
+    pub(crate) state: Option<Rc<RefCell<State>>>,
+}
+
+impl Bus {
+
+    pub fn new() -> Bus {
         Bus {
-            ppu,
-            cpu_ram: vec![0; 2048]
+            cpu: None,
+            ppu: None,
+            state: None
         }
-    }
-
-    pub(crate) fn load(&mut self, code: Vec<u8>) {
-        let mut i = 0;
-        for item in code {
-            self.cpu_write(i, item);
-            i += 1;
-        }
-    }
-
-    pub(crate) fn cpu_write(&mut self, addr: u16, data: u8) {
-        if  addr >= 0x0000 && addr <= 0x1FFF {
-            self.cpu_ram[addr as usize & 0x07ff] = data;
-        } else if addr >= 0x2000 && addr <= 0x3fff {
-            self.ppu.cpu_write(addr & 0x0007, data);
-        }
-    }
-
-    pub(crate) fn cpu_read(&mut self, addr: u16, read_only: bool) -> u8 {
-        let mut data: u8 = 0x00;
-        if addr >= 0x0000 && addr <= 0x1FFF {
-            data = self.cpu_ram[addr as usize & 0x07ff];
-        } else if addr >= 0x2000 && addr <= 0x3fff {
-            data = self.ppu.cpu_read(addr & 0x0007, read_only);
-        }
-
-        return data;
     }
 }

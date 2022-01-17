@@ -1,10 +1,13 @@
-use crate::bus::Bus;
+use std::cell::{Ref, RefCell, RefMut};
+use std::ops::DerefMut;
+use std::rc::Rc;
+use crate::bus::{Bus, cpu_read, cpu_write};
 use crate::cpu::Flags::{U, I, B, C, Z, V, N, D};
 use crate::cpu::{Flags, Opcodes, AddressModes};
+use crate::state::State;
 
-pub(crate) struct Cpu<'a> {
-    // Linkage to the communications bus
-    pub(crate) bus: &'a mut Bus<'a>,
+pub(crate) struct Cpu {
+    pub(crate) state: Option<Rc<RefCell<State>>>,
     // All used memory addresses end up in here
     addr_abs: u16,
     // Represents absolute address following a branch
@@ -41,11 +44,11 @@ struct Instruction {
 }
 
 #[allow(arithmetic_overflow, dead_code)]
-impl Cpu<'_> {
+impl Cpu {
 
-    pub fn new<'a>(bus: &'a mut Bus<'a>) -> Cpu<'a> {
+    pub fn new() -> Cpu {
         Cpu {
-            bus,
+            state: None,
             addr_abs: 0x0000,
             addr_rel: 0x00,
             opcode: 0x00,
@@ -79,7 +82,7 @@ impl Cpu<'_> {
         }
     }
 
-    pub(crate) fn clock(&mut self) {
+    pub(crate) fn clock(&mut self) -> Result<(), ()> {
         if self.cycles == 0 {
             self.opcode = self.read(self.pc);
             self.set_flag(U, true);
@@ -170,6 +173,20 @@ impl Cpu<'_> {
         }
         self.clock_count += 1;
         self.cycles -= 1;
+
+        let mut state = self.state.as_ref().expect("Missing state").as_ref().borrow_mut();
+        if self.pc as usize == state.code_end && self.cycles == 0 {
+            return Err(());
+        }
+        return Ok(());
+    }
+
+    pub(crate) fn get_state_mut(&mut self) -> RefMut<'_, State> {
+        self.state.as_ref().expect("Missing Stete").as_ref().borrow_mut()
+    }
+
+    pub(crate) fn get_state(&self) -> Ref<'_, State> {
+        self.state.as_ref().expect("Missing Stete").as_ref().borrow()
     }
 
     fn complete(&mut self) -> bool {
@@ -193,14 +210,16 @@ impl Cpu<'_> {
     }
 
     fn read(&mut self, a: u16) -> u8 {
-        return self.bus.cpu_read(a, false);
+        let mut state = self.state.as_ref().expect("Missing state").as_ref().borrow_mut();
+        cpu_read(&mut state, a, false)
     }
 
     fn write(&mut self, a: u16, d: u8) {
-        self.bus.cpu_write(a, d);
+        let mut state = self.state.as_ref().expect("Missing state").as_ref().borrow_mut();
+        cpu_write(&mut state, a, d)
     }
 
-    fn reset(&mut self) {
+    pub(crate) fn reset(&mut self) {
         self.addr_abs = 0xFFFC;
         let lo = self.read(self.addr_abs + 0) as u16;
         let hi = self.read(self.addr_abs + 1) as u16;

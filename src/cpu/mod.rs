@@ -99,12 +99,25 @@ enum AddressModes {
     Abx
 }
 
-macro_rules! create_cpu {
-    ($var1:ident) => {
-        let mut ppu = crate::ppu::Ppu::new();
-        let mut bus = crate::bus::Bus::new(&mut ppu);
-        let mut $var1 = crate::cpu::cpu_6502::Cpu::new(&mut bus);
-    };
+
+use crate::bus::clock;
+use crate::cpu::cpu_6502::Cpu;
+use crate::ppu::Ppu;
+use crate::state::State;
+
+
+pub(crate) fn cpu_loop(cpu: &mut Cpu) {
+    loop {
+        if let Err(_) = cpu.clock() {
+            break
+        }
+    }
 }
 
-pub(crate) use create_cpu;
+pub(crate) fn real_loop(ppu: &mut Ppu, cpu: &mut Cpu) {
+    loop {
+        if let Err(_) = clock(ppu, cpu) {
+            break
+        }
+    }
+}
