@@ -39,4 +39,4 @@ fn test() {
 
 mod draw_debug;
 mod draw_pixels;
-pub(crate) mod display;
+pub mod display;

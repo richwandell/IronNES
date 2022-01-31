@@ -50,7 +50,7 @@ pub(crate) fn clock(ppu: &mut Ppu, cpu: &mut Cpu) -> Result<(), ()>{
     return Ok(());
 }
 
-pub(crate) fn advance(ppu: &mut Ppu, cpu: &mut Cpu) -> Result<(), ()>{
+pub fn advance(ppu: &mut Ppu, cpu: &mut Cpu) -> Result<(), ()>{
     loop {
         ppu.clock();
         if cpu.get_state_mut().n_system_clock_counter % 3 == 0 {

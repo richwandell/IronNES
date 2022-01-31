@@ -20,7 +20,7 @@ use crate::display::draw_pixels::draw_pixels;
 use crate::display::{EMU_HEIGHT, EMU_WIDTH};
 use crate::{Cpu, State};
 
-pub(crate) struct Display {
+pub struct Display {
     window: Window,
     gl: GlGraphics,
     state: Rc<RefCell<State>>,
@@ -36,7 +36,7 @@ fn get_scaled_context(c: Context) -> Context {
 
 impl Display {
 
-    pub(crate) fn new(state: Rc<RefCell<State>>, cpu: Rc<RefCell<Cpu>>) -> Display {
+    pub fn new(state: Rc<RefCell<State>>, cpu: Rc<RefCell<Cpu>>) -> Display {
         let opengl = OpenGL::V3_2;
 
         let window: Window = WindowSettings::new("IronNES", [EMU_WIDTH * 3, EMU_HEIGHT * 3])
@@ -84,7 +84,7 @@ impl Display {
         });
     }
 
-    pub(crate) fn start<F>(&mut self, f: F)
+    pub fn start<F>(&mut self, f: F)
         where F: Fn(Option<Button>) {
         let mut events = Events::new(EventSettings::new());
         let mut d_img = ImageBuffer::from_fn(EMU_WIDTH, EMU_HEIGHT, |x, y| {
@@ -100,8 +100,6 @@ impl Display {
             if let Some(args) = e.render_args() {
                 self.render(args, &mut d_img, &mut texture, &mut disassembly);
             }
-
-
         }
     }
 }

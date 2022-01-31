@@ -21,7 +21,7 @@ impl State {
         }
     }
 
-    pub(crate) fn load(&mut self, code: Vec<u8>, offset: u16) {
+    pub fn load(&mut self, code: Vec<u8>, offset: u16) {
         let end = code.len().clone();
         self.code_end = end + offset as usize;
 

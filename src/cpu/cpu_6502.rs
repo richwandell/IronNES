@@ -9,7 +9,7 @@ use crate::cpu::{Flags, Opcodes, AddressModes};
 use crate::cpu::AddressModes::Imp;
 use crate::state::State;
 
-pub(crate) struct Cpu {
+pub struct Cpu {
     pub(crate) state: Option<Rc<RefCell<State>>>,
     // All used memory addresses end up in here
     addr_abs: u16,
@@ -222,7 +222,7 @@ impl Cpu {
         cpu_write(&mut state, a, d)
     }
 
-    pub(crate) fn reset(&mut self) {
+    pub fn reset(&mut self) {
         self.addr_abs = 0xFFFC;
         let lo = self.read(self.addr_abs + 0) as u16;
         let hi = self.read(self.addr_abs + 1) as u16;
@@ -498,7 +498,12 @@ impl Cpu {
     fn bcc(&mut self) -> bool {
         if self.get_flag(C) == false {
             self.cycles += 1;
-            self.addr_abs = self.pc + self.addr_abs;
+            let rel = self.addr_rel as i16;
+            if rel > 0 {
+                self.addr_abs = self.pc + rel.abs() as u16;
+            } else {
+                self.addr_abs = self.pc - rel.abs() as u16;
+            }
 
             if self.addr_abs & 0xFF00 != self.pc & 0xFF00 {
                 self.cycles += 1;
@@ -512,7 +517,13 @@ impl Cpu {
     fn bcs(&mut self) -> bool {
         if self.get_flag(C) == true {
             self.cycles += 1;
-            self.addr_abs = self.pc + self.addr_abs;
+
+            let rel = self.addr_rel as i16;
+            if rel > 0 {
+                self.addr_abs = self.pc + rel.abs() as u16;
+            } else {
+                self.addr_abs = self.pc - rel.abs() as u16;
+            }
 
             if self.addr_abs & 0xFF00 != self.pc & 0xFF00 {
                 self.cycles += 1;
@@ -526,7 +537,12 @@ impl Cpu {
     fn beq(&mut self) -> bool {
         if self.get_flag(Z) == true {
             self.cycles += 1;
-            self.addr_abs = self.pc + self.addr_abs;
+            let rel = self.addr_rel as i16;
+            if rel > 0 {
+                self.addr_abs = self.pc + rel.abs() as u16;
+            } else {
+                self.addr_abs = self.pc - rel.abs() as u16;
+            }
 
             if self.addr_abs & 0xFF00 != self.pc & 0xFF00 {
                 self.cycles += 1;
@@ -1140,21 +1156,21 @@ impl Cpu {
                 addr += 1;
                 let hi = self.read(addr as u16);
                 addr += 1;
-                let value = hi << 8 | lo;
+                let value = (((hi as u16) << 8) | lo as u16) as u8;
                 dis_string = format!("{}${}, X {}", dis_string, hex::encode(&value.to_be_bytes()), "{ABX}");
             } else if self.lookup[opcode as usize].addr == AddressModes::Aby {
                 let lo = self.read(addr as u16);
                 addr += 1;
                 let hi = self.read(addr as u16);
                 addr += 1;
-                let value = hi << 8 | lo;
+                let value = (((hi as u16) << 8) | lo as u16) as u8;
                 dis_string = format!("{}${}, Y {}", dis_string, hex::encode(&value.to_be_bytes()), "{ABY}");
             } else if self.lookup[opcode as usize].addr == AddressModes::Ind {
                 let lo = self.read(addr as u16);
                 addr += 1;
                 let hi = self.read(addr as u16);
                 addr += 1;
-                let value = hi << 8 | lo;
+                let value = (((hi as u16) << 8) | lo as u16) as u8;
                 dis_string = format!("{}(${}) {}", dis_string, hex::encode(&value.to_be_bytes()), "{IND}");
             } else if self.lookup[opcode as usize].addr == AddressModes::Rel {
                 let value = self.read(addr as u16);
