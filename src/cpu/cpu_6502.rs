@@ -699,7 +699,9 @@ impl Cpu {
     fn cmp(&mut self) -> bool {
         self.fetch();
 
-        let temp = self.a as u16 - self.fetched as u16;
+
+        let temp = self.a.wrapping_sub(self.fetched);
+
 
         self.set_flag(C, self.a >= self.fetched);
 
@@ -753,7 +755,9 @@ impl Cpu {
     }
 
     fn dex(&mut self) -> bool {
-        self.x -= 1;
+        if self.x > 0 {
+            self.x -= 1;
+        }
 
         self.set_flag(Z, self.x == 0x00);
 

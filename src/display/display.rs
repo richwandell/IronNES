@@ -24,7 +24,8 @@ pub struct Display {
     window: Window,
     gl: GlGraphics,
     state: Rc<RefCell<State>>,
-    cpu: Rc<RefCell<Cpu>>
+    cpu: Rc<RefCell<Cpu>>,
+    debug: bool
 }
 
 fn get_scaled_context(c: Context) -> Context {
@@ -35,6 +36,26 @@ fn get_scaled_context(c: Context) -> Context {
 }
 
 impl Display {
+
+    pub fn debug(state: Rc<RefCell<State>>, cpu: Rc<RefCell<Cpu>>) -> Display {
+        let opengl = OpenGL::V3_2;
+
+        let window: Window = WindowSettings::new("IronNES", [EMU_WIDTH * 3, EMU_HEIGHT * 3])
+            .graphics_api(opengl)
+            .exit_on_esc(true)
+            .build()
+            .unwrap();
+
+        let mut gl  = GlGraphics::new(opengl);
+
+        Display {
+            window,
+            gl,
+            state,
+            cpu,
+            debug: true
+        }
+    }
 
     pub fn new(state: Rc<RefCell<State>>, cpu: Rc<RefCell<Cpu>>) -> Display {
         let opengl = OpenGL::V3_2;
@@ -53,7 +74,8 @@ impl Display {
             window,
             gl,
             state,
-            cpu
+            cpu,
+            debug: false
         }
     }
 
@@ -68,18 +90,17 @@ impl Display {
 
         let mut glyphs: GlyphCache = GlyphCache::new("assets/PixelEmulator-xq08.ttf", (), TextureSettings::new()).unwrap();
 
+        let debug = self.debug;
         self.gl.draw(args.viewport(), |c, gl| {
             //Clear the screen
             clear([0.0, 0.0, 1.0, 1.0], gl);
 
             let context = get_scaled_context(c);
 
-            {
-                // draw_pixels(&*state, d_img, texture, context, gl);
-            }
-
-            {
+            if  debug {
                 draw_debug(&*state, &*cpu, c, &mut glyphs, disassembly, gl);
+            } else {
+                draw_pixels(&*state, d_img, texture, context, gl);
             }
         });
     }

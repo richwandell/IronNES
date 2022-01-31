@@ -17,7 +17,7 @@ fn main() {
     state_ref.as_ref().borrow_mut().load(file_slice.to_vec(), 0x8000);
     cpu_ref.as_ref().borrow_mut().reset();
 
-    let mut display = Display::new(state_ref.clone(), cpu_ref.clone());
+    let mut display = Display::debug(state_ref.clone(), cpu_ref.clone());
 
     display.start(|event| {
         let mut ppu= ppu_ref.as_ref().borrow_mut();

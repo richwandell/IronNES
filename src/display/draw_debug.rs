@@ -2,16 +2,13 @@ use std::collections::HashMap;
 use graphics::{Context, text, Transformed};
 use graphics::types::Color;
 use opengl_graphics::{GlGraphics, GlyphCache};
-use crate::{Cpu, State};
+use crate::{COLOR_BLUE, COLOR_WHITE, COLOR_GREEN, COLOR_RED, Cpu, State};
 use crate::bus::cpu_read;
 use crate::display::IColor;
 use crate::cpu::Flags;
 use crate::display::{EMU_HEIGHT, EMU_WIDTH};
 
-const COLOR_BLUE: [u8; 4] = [0, 0, 255, 255];
-const COLOR_WHITE: [u8; 4] = [255, 255, 255, 255];
-const COLOR_GREEN: [u8; 4] = [0, 255, 0, 255];
-const COLOR_RED: [u8; 4] = [255, 0, 0, 255];
+
 
 pub(crate) fn draw_debug(state: &State,
                          cpu: &Cpu,
