@@ -7,9 +7,9 @@ use crate::cpu::tests::create_devices;
 use crate::ppu::Ppu;
 use crate::state::State;
 
-fn run_test_code(code: Vec<u8>) -> Vec<u8> {
+fn run_test_code(code: Vec<u8>, offset: u16) -> Vec<u8> {
     create_devices!(ppu, cpu);
-    cpu.get_state_mut().load(code);
+    cpu.get_state_mut().load(code, 0);
     real_loop(&mut ppu, &mut cpu);
     let state = cpu.get_state();
     state.cpu_ram.clone()
@@ -41,7 +41,7 @@ stx $0301
         0xC6, 0x01, 0xA6, 0x00, 0x8E, 0x00, 0x03, 0xA6,
         0x01, 0x8E, 0x01, 0x03
     ];
-    let cpu_ram = run_test_code(code);
+    let cpu_ram = run_test_code(code, 0);
     assert_eq!(cpu_ram[0], 11);
     assert_eq!(cpu_ram[1], 9);
     assert_eq!(cpu_ram[768], 11);
@@ -75,7 +75,7 @@ sta $03
         0xA5, 0x00, 0x18, 0x65, 0x01, 0x85, 0x02, 0xA9,
         0x00, 0x69, 0x00, 0x85, 0x03
     ];
-    let cpu_ram = run_test_code(code);
+    let cpu_ram = run_test_code(code, 0);
     assert_eq!(cpu_ram[2], 30);
     assert_eq!(cpu_ram[3], 0);
 }
@@ -101,7 +101,7 @@ sta $01
         0x18, 0xA9, 0x14, 0x69, 0xF0, 0x85, 0x00, 0xA9,
         0x00, 0x69, 0x00, 0x85, 0x01,
     ];
-    let cpu_ram = run_test_code(code);
+    let cpu_ram = run_test_code(code, 0);
     assert_eq!(cpu_ram[0], 4);
     assert_eq!(cpu_ram[1], 1);
     let final_num = 256 * cpu_ram[1] as u16 + (cpu_ram[0] as u16);
@@ -131,7 +131,7 @@ sta $01
         0x18, 0xA9, 0xF4, 0x69, 0xBC, 0x85, 0x00, 0xA9,
         0x01, 0x69, 0x02, 0x85, 0x01,
     ];
-    let cpu_ram = run_test_code(code);
+    let cpu_ram = run_test_code(code, 0);
     let final_num = 256 * cpu_ram[1] as u16 + (cpu_ram[0] as u16);
     assert_eq!(final_num, 1200);
 }
@@ -157,7 +157,35 @@ sta $01
         0x38, 0xA9, 0xBC, 0xE9, 0xF4, 0x85, 0x00, 0xA9,
         0x02, 0xE9, 0x01, 0x85, 0x01,
     ];
-    let cpu_ram = run_test_code(code);
+    let cpu_ram = run_test_code(code, 0);
     let final_num = 256 * cpu_ram[1] as u16 + (cpu_ram[0] as u16);
     assert_eq!(final_num, 200);
+}
+
+#[test]
+fn test_multiply_10_and_3() {
+    /*
+        *=$8000
+        LDX #10
+        STX $0000
+        LDX #3
+        STX $0001
+        LDY $0000
+        LDA #0
+        CLC
+        loop
+        ADC $0001
+        DEY
+        BNE loop
+        STA $0002
+        NOP
+        NOP
+        NOP
+    */
+    let code : Vec<u8> = vec![0xA2, 0x0A, 0x8E, 0x00, 0x00, 0xA2, 0x03, 0x8E, 0x01, 0x00, 0xAC,
+                              0x00, 0x00, 0xA9, 0x00, 0x18, 0x6D, 0x01, 0x00, 0x88, 0xD0, 0xFA, 0x8D, 0x02, 0x00, 0xEA, 0xEA, 0xEA];
+    let cpu_ram = run_test_code(code, 0x8000);
+    assert_eq!(cpu_ram[0], 10);
+    assert_eq!(cpu_ram[1], 3);
+    assert_eq!(cpu_ram[2], 30);
 }

@@ -1,9 +1,12 @@
 use std::cell::{Ref, RefCell, RefMut};
+use std::collections::HashMap;
 use std::ops::DerefMut;
 use std::rc::Rc;
+use graphics::math::add;
 use crate::bus::{Bus, cpu_read, cpu_write};
 use crate::cpu::Flags::{U, I, B, C, Z, V, N, D};
 use crate::cpu::{Flags, Opcodes, AddressModes};
+use crate::cpu::AddressModes::Imp;
 use crate::state::State;
 
 pub(crate) struct Cpu {
@@ -21,13 +24,13 @@ pub(crate) struct Cpu {
     // Program Counter
     pub(crate) pc: u16,
     // Accumulator Register
-    a: u8,
+    pub(crate) a: u8,
     // X Register
-    x: u8,
+    pub(crate) x: u8,
     // Y Register
-    y: u8,
+    pub(crate) y: u8,
     // Stack Pointer (points to location on bus)
-    stkp: u8,
+    pub(crate) stkp: u8,
     // Status Register
     pub(crate) status: u8,
     // Represents the working input value to the ALU
@@ -551,9 +554,15 @@ impl Cpu {
     fn bne(&mut self) -> bool {
         if self.get_flag(Z) == false {
             self.cycles += 1;
-            self.addr_abs = self.pc + self.addr_abs;
+            let rel = self.addr_rel as i16;
 
-            if self.addr_abs & 0xFF00 != self.pc & 0xFF00 {
+            if rel > 0 {
+                self.addr_abs = self.pc + rel.abs() as u16;
+            } else {
+                self.addr_abs = self.pc - rel.abs() as u16;
+            }
+
+            if (self.addr_abs & 0xFF00) != (self.pc & 0xFF00) {
                 self.cycles += 1;
             }
             self.pc = self.addr_abs;
@@ -587,7 +596,6 @@ impl Cpu {
         return false;
     }
 
-    #[allow(arithmetic_overflow)]
     fn brk(&mut self) -> bool {
         self.pc += 1;
 
@@ -595,20 +603,28 @@ impl Cpu {
 
         self.write((0x0100 + self.stkp as u16) as u16, ((self.pc >> 8) & 0x00FF) as u8);
 
-        self.stkp -= 1;
+        if self.stkp > 0 {
+            self.stkp -= 1;
+        }
 
         self.write((0x0100 + self.stkp as u16) as u16, (self.pc & 0x00FF) as u8);
-        self.stkp -= 1;
+        if self.stkp > 0 {
+            self.stkp -= 1;
+        }
 
         self.set_flag(B, true);
 
         self.write((0x0100 + self.stkp as u16) as u16, self.status);
 
-        self.stkp -= 1;
+        if self.stkp > 0 {
+            self.stkp -= 1;
+        }
 
         self.set_flag(B, false);
 
-        self.pc = self.read(0xFFFE) as u16 | (self.read(0xFFFF) << 8) as u16;
+        let a = ((self.read(0xFFFF) as u16) << 8) as u8;
+
+        self.pc = self.read(0xFFFE) as u16 | (a) as u16;
 
         return false;
     }
@@ -1067,5 +1083,91 @@ impl Cpu {
 
     fn xxx(&mut self) -> bool {
         return false;
+    }
+
+    pub(crate) fn disassemble(&mut self) -> HashMap<u16, String> {
+        let mut addr: u32 = 0;
+        let stop_addr = 0xFFFF;
+
+        let mut map = HashMap::new();
+
+        while addr <= stop_addr {
+            let line_addr = addr;
+
+            let hex_str = hex::encode(&addr.to_be_bytes());
+            let mut dis_string = format!("${}: ", &hex_str[hex_str.len()-4..]);
+
+            let opcode = self.read(addr as u16);
+            addr += 1;
+
+            dis_string = format!("{}{} ", dis_string, self.lookup[opcode as usize].name);
+
+            if self.lookup[opcode as usize].addr == AddressModes::Imp {
+                dis_string = format!("{}{}", dis_string, "{IMP}");
+            } else if self.lookup[opcode as usize].addr == AddressModes::Imm {
+                let value = self.read(addr as u16);
+                addr += 1;
+                dis_string = format!("{}#${} {}", dis_string, hex::encode(&value.to_be_bytes()), "{IMM}")
+            } else if self.lookup[opcode as usize].addr == AddressModes::Zp0 {
+                let lo = self.read(addr as u16);
+                addr += 1;
+                dis_string = format!("{}${} {}", dis_string, hex::encode(&lo.to_be_bytes()), "{ZP0}");
+            } else if self.lookup[opcode as usize].addr == AddressModes::Zpx {
+                let lo = self.read(addr as u16);
+                addr += 1;
+                dis_string = format!("{}${}, X {}", dis_string, hex::encode(&lo.to_be_bytes()), "{ZPX}");
+            } else if self.lookup[opcode as usize].addr == AddressModes::Zpy {
+                let lo = self.read(addr as u16);
+                addr += 1;
+                dis_string = format!("{}${}, Y {}", dis_string, hex::encode(&lo.to_be_bytes()), "{ZPY}");
+            } else if self.lookup[opcode as usize].addr == AddressModes::Izx {
+                let lo = self.read(addr as u16);
+                addr += 1;
+                dis_string = format!("{}(${}, X) {}", dis_string, hex::encode(&lo.to_be_bytes()), "{IZX}");
+            } else if self.lookup[opcode as usize].addr == AddressModes::Izy {
+                let lo = self.read(addr as u16);
+                addr += 1;
+                dis_string = format!("{}(${}, Y) {}", dis_string, hex::encode(&lo.to_be_bytes()), "{IZY}");
+            } else if self.lookup[opcode as usize].addr == AddressModes::Abs {
+                let lo = self.read(addr as u16) as u16;
+                addr += 1;
+                let hi = self.read(addr as u16) as u16;
+                addr += 1;
+                let value = (hi << 8 | lo) as u8;
+                dis_string = format!("{}${} {}", dis_string, hex::encode(&value.to_be_bytes()), "{ABS}");
+            } else if self.lookup[opcode as usize].addr == AddressModes::Abx {
+                let lo = self.read(addr as u16);
+                addr += 1;
+                let hi = self.read(addr as u16);
+                addr += 1;
+                let value = hi << 8 | lo;
+                dis_string = format!("{}${}, X {}", dis_string, hex::encode(&value.to_be_bytes()), "{ABX}");
+            } else if self.lookup[opcode as usize].addr == AddressModes::Aby {
+                let lo = self.read(addr as u16);
+                addr += 1;
+                let hi = self.read(addr as u16);
+                addr += 1;
+                let value = hi << 8 | lo;
+                dis_string = format!("{}${}, Y {}", dis_string, hex::encode(&value.to_be_bytes()), "{ABY}");
+            } else if self.lookup[opcode as usize].addr == AddressModes::Ind {
+                let lo = self.read(addr as u16);
+                addr += 1;
+                let hi = self.read(addr as u16);
+                addr += 1;
+                let value = hi << 8 | lo;
+                dis_string = format!("{}(${}) {}", dis_string, hex::encode(&value.to_be_bytes()), "{IND}");
+            } else if self.lookup[opcode as usize].addr == AddressModes::Rel {
+                let value = self.read(addr as u16);
+                addr += 1;
+                let addr_value = addr as u16 + value as u16;
+                dis_string = format!("{}${} [${}] {}",
+                                     dis_string,
+                                     hex::encode(&value.to_be_bytes()),
+                                     hex::encode(&addr_value.to_be_bytes()),
+                                     "{REL}");
+            }
+            map.insert(line_addr as u16, dis_string);
+        }
+        map
     }
 }

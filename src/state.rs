@@ -12,7 +12,7 @@ pub struct State {
 impl State {
     pub fn new() -> State {
         State {
-            cpu_ram: vec![0; 2048],
+            cpu_ram: vec![0; 64 * 1024],
             ppu_ram: vec![0; 2048],
             code_end: 0,
             name_tables: vec![vec![0; 1024], vec![0; 1024]],
@@ -21,14 +21,18 @@ impl State {
         }
     }
 
-    pub(crate) fn load(&mut self, code: Vec<u8>) {
+    pub(crate) fn load(&mut self, code: Vec<u8>, offset: u16) {
         let end = code.len().clone();
-        self.code_end = end;
+        self.code_end = end + offset as usize;
 
         let mut i = 0;
         for item in code {
-            cpu_write(self, i, item);
+            cpu_write(self, i + offset, item);
             i += 1;
         }
+
+        let offset_bytes = offset.to_be_bytes();
+        cpu_write(self, 0xFFFC, offset_bytes[1]);
+        cpu_write(self, 0xFFFD, offset_bytes[0]);
     }
 }
