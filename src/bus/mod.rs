@@ -61,8 +61,6 @@ pub fn advance(ppu: &mut Ppu, cpu: &mut Cpu) -> Result<(), ()>{
             }
         }
         cpu.get_state_mut().n_system_clock_counter += 1;
-
-        println!("cycling");
     }
 }
 

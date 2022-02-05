@@ -217,7 +217,7 @@ impl Cpu {
         cpu_read(&mut state, a, false)
     }
 
-    fn write(&mut self, a: u16, d: u8) {
+    pub fn write(&mut self, a: u16, d: u8) {
         let mut state = self.state.as_ref().expect("Missing state").as_ref().borrow_mut();
         cpu_write(&mut state, a, d)
     }

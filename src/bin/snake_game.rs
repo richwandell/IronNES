@@ -1,7 +1,11 @@
+use std::cell::RefCell;
 use std::fs::File;
 use std::io::Read;
+use std::rc::Rc;
+use std::time::Instant;
+use piston::{EventLoop, EventSettings, UpdateArgs};
 use nes_emulator::{advance, create_system, Display};
-
+use rand::{Rng, thread_rng};
 
 fn main() {
     let game_code = vec![
@@ -34,20 +38,30 @@ fn main() {
 
     let mut display = Display::new(
         state_ref.clone(),
-        cpu_ref.clone()
+        cpu_ref.clone(),
+        false
     );
 
-    display.start(|event| {
-        let mut ppu= ppu_ref.as_ref().borrow_mut();
-        let mut cpu = cpu_ref.as_ref().borrow_mut();
+    let mut rng = Rc::new(RefCell::new(thread_rng()));
+    let mut settings = EventSettings::new();
+    settings.set_ups(5);
 
-        if let Some(_args) = event {
+    display.start(settings,
+        |event| {
+
+            let mut ppu= ppu_ref.as_ref().borrow_mut();
+            let mut cpu = cpu_ref.as_ref().borrow_mut();
+
+            let val = rng.as_ref().borrow_mut().gen_range(1, 16);
+            cpu.write(0xfe, val);
+
             if let Ok(_) = advance(&mut ppu, &mut cpu) {
-                println!("{}", "clock ok");
-            } else {
-                println!("{}", "clock not ok")
+                println!("{}", event.dt);
             }
+        },
+        |button| {
+            println!("{:?}", button);
         }
-    });
+    );
 }
 

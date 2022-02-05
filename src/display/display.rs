@@ -8,6 +8,7 @@ use graphics::{clear, Transformed};
 use graphics::rectangle::square;
 use std::path::Path;
 use std::rc::Rc;
+use std::time::Instant;
 use graphics::math::Scalar;
 use graphics::types::Color;
 use image::{DynamicImage, GenericImage, GenericImageView, ImageBuffer, Rgba};
@@ -37,7 +38,7 @@ fn get_scaled_context(c: Context) -> Context {
 
 impl Display {
 
-    pub fn debug(state: Rc<RefCell<State>>, cpu: Rc<RefCell<Cpu>>) -> Display {
+    pub fn new(state: Rc<RefCell<State>>, cpu: Rc<RefCell<Cpu>>, debug: bool) -> Display {
         let opengl = OpenGL::V3_2;
 
         let window: Window = WindowSettings::new("IronNES", [EMU_WIDTH * 3, EMU_HEIGHT * 3])
@@ -53,29 +54,7 @@ impl Display {
             gl,
             state,
             cpu,
-            debug: true
-        }
-    }
-
-    pub fn new(state: Rc<RefCell<State>>, cpu: Rc<RefCell<Cpu>>) -> Display {
-        let opengl = OpenGL::V3_2;
-
-        let window: Window = WindowSettings::new("IronNES", [EMU_WIDTH * 3, EMU_HEIGHT * 3])
-            .graphics_api(opengl)
-            .exit_on_esc(true)
-            .build()
-            .unwrap();
-
-        let mut gl  = GlGraphics::new(opengl);
-
-
-
-        Display {
-            window,
-            gl,
-            state,
-            cpu,
-            debug: false
+            debug
         }
     }
 
@@ -105,9 +84,9 @@ impl Display {
         });
     }
 
-    pub fn start<F>(&mut self, f: F)
-        where F: Fn(Option<Button>) {
-        let mut events = Events::new(EventSettings::new());
+    pub fn start<U, F>(&mut self,settings: EventSettings, update: U, button: F)
+        where U: Fn(UpdateArgs), F: Fn(Button) {
+        let mut events = Events::new(settings);
         let mut d_img = ImageBuffer::from_fn(EMU_WIDTH, EMU_HEIGHT, |x, y| {
             image::Rgba([255, 255, 255, 255])
         });
@@ -116,10 +95,13 @@ impl Display {
         let mut disassembly = self.cpu.as_ref().borrow_mut().disassemble();
         // Main loop
         while let Some(e) = events.next(&mut self.window) {
-            f(e.press_args());
-
+            if let Some(args) = e.press_args() {
+                button(args);
+            }
             if let Some(args) = e.render_args() {
                 self.render(args, &mut d_img, &mut texture, &mut disassembly);
+            } else if let Some(args) = e.update_args() {
+                update(args);
             }
         }
     }
