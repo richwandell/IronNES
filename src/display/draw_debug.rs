@@ -10,12 +10,14 @@ use crate::display::{EMU_HEIGHT, EMU_WIDTH};
 
 
 
-pub(crate) fn draw_debug(state: &State,
-                         cpu: &Cpu,
-                         context: Context,
-                         mut glyphs: &mut GlyphCache,
-                         disassembly: &HashMap<u16, String>,
-                         gl: &mut GlGraphics
+pub(crate) fn draw_debug(
+    state: &State,
+    cpu: &Cpu,
+    context: Context,
+    mut glyphs: &mut GlyphCache,
+    disassembly: &HashMap<u16, String>,
+    gl: &mut GlGraphics,
+    visible_pages: &Vec<u16>
 ) {
     let size = context.get_view_size();
     let x_scaler = size[0] / EMU_WIDTH as f64;
@@ -138,33 +140,22 @@ pub(crate) fn draw_debug(state: &State,
     }
 
     x = 3;
-    y = 10;
+    y = 7;
     text_size = 3;
-    let mut addr: u16 = 0x0000;
-    for _ in 0..16 {
-        let mut write_string = format!("${}:", hex::encode(&addr.to_be_bytes()));
-        for _ in 0..16 {
-            let value = hex::encode(&cpu_read(&state, addr, true).to_be_bytes());
-            write_string = format!("{} {}", write_string, &value[value.len()-2..]);
-            addr += 1;
-        }
-        draw_string!(&write_string, x, y, COLOR_WHITE);
+    for page in visible_pages {
         y += text_size;
-    }
 
-    x = 3;
-    y += text_size;
-    text_size = 3;
-    let mut addr: u16 = 0x8000;
-    for _ in 0..16 {
-        let mut write_string = format!("${}:", hex::encode(&addr.to_be_bytes()));
+        let mut addr: u32 = *page as u32;
         for _ in 0..16 {
-            let value = hex::encode(&cpu_read(&state, addr, true).to_be_bytes());
-            write_string = format!("{} {}", write_string, &value[value.len()-2..]);
-            addr += 1;
+            let mut write_string = format!("${}:", hex::encode(&(addr as u16).to_be_bytes()));
+            for _ in 0..16 {
+                let value = hex::encode(&cpu_read(&state, addr as u16, true).to_be_bytes());
+                write_string = format!("{} {}", write_string, &value[value.len()-2..]);
+                addr += 1;
+            }
+            draw_string!(&write_string, x, y, COLOR_WHITE);
+            y += text_size;
         }
-        draw_string!(&write_string, x, y, COLOR_WHITE);
-        y += text_size;
     }
 }
 

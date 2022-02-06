@@ -3,8 +3,6 @@ extern crate graphics;
 extern crate glutin_window;
 extern crate opengl_graphics;
 
-use graphics::types::Color;
-
 const EMU_WIDTH: u32 = 256;
 const EMU_HEIGHT: u32 = 240;
 
@@ -33,6 +31,7 @@ impl From<IColor> for [f32; 4] {
 
 #[test]
 fn test() {
+    use graphics::types::Color;
     let c: Color = IColor::from([128, 255, 30, 255]).into();
     assert_eq!(c, [0.5019608, 1.0, 0.11764706, 1.0]);
 }
@@ -40,3 +39,6 @@ fn test() {
 mod draw_debug;
 mod draw_pixels;
 pub mod display;
+pub mod display_snake;
+pub mod display_nes;
+pub mod display_debug;

@@ -2,7 +2,9 @@
 
 use std::fs::File;
 use std::io::Read;
-use nes_emulator::{advance, create_system, Display};
+use nes_emulator::{create_system};
+use nes_emulator::display::display::Game;
+use nes_emulator::display::display_debug::NesDebug;
 
 
 fn main() {
@@ -13,22 +15,22 @@ fn main() {
     let file_slice = &buffer[0x0010..0x4000];
     let (bus_ref, cpu_ref, ppu_ref, state_ref) = create_system();
 
-    state_ref.as_ref().borrow_mut().load(file_slice.to_vec(), 0xC000);
-    state_ref.as_ref().borrow_mut().load(file_slice.to_vec(), 0x8000);
-    cpu_ref.as_ref().borrow_mut().reset();
-
-    let mut display = Display::debug(state_ref.clone(), cpu_ref.clone());
-
-    display.start(|event| {
-        let mut ppu= ppu_ref.as_ref().borrow_mut();
+    {
+        let mut state = state_ref.as_ref().borrow_mut();
+        state.load(file_slice.to_vec(), 0xC000);
+        state.load(file_slice.to_vec(), 0x8000);
+    }
+    {
         let mut cpu = cpu_ref.as_ref().borrow_mut();
+        cpu.reset();
+        cpu.pc = 0x0c000;
+    }
 
-        if let Some(_args) = event {
-            if let Ok(_) = advance(&mut ppu, &mut cpu) {
-                println!("{}", "clock ok");
-            } else {
-                println!("{}", "clock not ok")
-            }
-        }
-    });
+    let mut game = NesDebug::new(
+        state_ref.clone(),
+        cpu_ref.clone(),
+        ppu_ref.clone(),
+        vec![0x0000, 0x8000, 0xFF00]
+    );
+    game.start();
 }

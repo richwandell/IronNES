@@ -22,7 +22,7 @@ pub struct Cpu {
     // A global accumulation of the number of clocks
     clock_count: u32,
     // Program Counter
-    pub(crate) pc: u16,
+    pub pc: u16,
     // Accumulator Register
     pub(crate) a: u8,
     // X Register
@@ -313,14 +313,14 @@ impl Cpu {
     }
 
     fn zpx(&mut self) -> u8 {
-        self.addr_abs = (self.read(self.pc) + self.x) as u16;
+        self.addr_abs = (self.read(self.pc).wrapping_add(self.x)) as u16;
         self.pc += 1;
         self.addr_abs &= 0x00FF;
         0
     }
 
     fn zpy(&mut self) -> u8 {
-        self.addr_abs = (self.read(self.pc) + self.y) as u16;
+        self.addr_abs = (self.read(self.pc).wrapping_add(self.y)) as u16;
         self.pc += 1;
         self.addr_abs &= 0x00FF;
         0
@@ -369,7 +369,7 @@ impl Cpu {
         self.pc += 1;
 
         self.addr_abs = (hi << 8) | lo;
-        self.addr_abs += self.y as u16;
+        self.addr_abs = self.addr_abs.wrapping_add(self.y as u16);
 
         if (self.addr_abs & 0xFF00) != (hi << 8) {
             return 1;
@@ -388,9 +388,9 @@ impl Cpu {
         let ptr = (ptr_hi << 8) | ptr_lo;
 
         if ptr_lo == 0x00FF {
-            self.addr_abs = ((self.read(ptr & 0xFF00) << 8) | self.read(ptr + 0)) as u16;
+            self.addr_abs = ((self.read(ptr & 0xFF00) as u16) << 8) | self.read(ptr + 0) as u16;
         } else {
-            self.addr_abs = ((self.read(ptr + 1) << 8) | self.read(ptr + 0)) as u16;
+            self.addr_abs = ((self.read(ptr + 1) as u16) << 8) | self.read(ptr + 0) as u16;
         }
 
         return 0;
@@ -416,7 +416,7 @@ impl Cpu {
         let hi = self.read((t + 1) & 0x00FF) as u16;
 
         self.addr_abs = (hi << 8) | lo;
-        self.addr_abs += self.y as u16;
+        self.addr_abs = self.addr_abs.wrapping_add(self.y as u16);
 
         if self.addr_abs & 0xFF00 != (hi << 8) {
             return 1;
@@ -478,7 +478,7 @@ impl Cpu {
     fn asl(&mut self) -> bool {
         self.fetch();
 
-        let temp = (self.fetched << 1) as u16;
+        let temp = (self.fetched as u16) << 1;
 
         self.set_flag(C, (temp & 0xFF00) > 0);
 
@@ -498,12 +498,13 @@ impl Cpu {
     fn bcc(&mut self) -> bool {
         if self.get_flag(C) == false {
             self.cycles += 1;
-            let rel = self.addr_rel as i16;
-            if rel > 0 {
-                self.addr_abs = self.pc + rel.abs() as u16;
-            } else {
-                self.addr_abs = self.pc - rel.abs() as u16;
-            }
+            self.addr_abs = self.pc.wrapping_add(self.addr_rel);
+            // let rel = self.addr_rel as i16;
+            // if rel > 0 {
+            //     self.addr_abs = self.pc + rel.abs() as u16;
+            // } else {
+            //     self.addr_abs = self.pc - rel.abs() as u16;
+            // }
 
             if self.addr_abs & 0xFF00 != self.pc & 0xFF00 {
                 self.cycles += 1;
@@ -556,7 +557,7 @@ impl Cpu {
     fn bmi(&mut self) -> bool {
         if self.get_flag(N) == true {
             self.cycles += 1;
-            self.addr_abs = self.pc + self.addr_abs;
+            self.addr_abs = self.pc.wrapping_add(self.addr_rel);
 
             if self.addr_abs & 0xFF00 != self.pc & 0xFF00 {
                 self.cycles += 1;
@@ -590,7 +591,13 @@ impl Cpu {
     fn bpl(&mut self) -> bool {
         if self.get_flag(N) == false {
             self.cycles += 1;
-            self.addr_abs = self.pc + self.addr_abs;
+
+            let rel = self.addr_rel as i16;
+            if rel > 0 {
+                self.addr_abs = self.pc + rel.abs() as u16;
+            } else {
+                self.addr_abs = self.pc - rel.abs() as u16;
+            }
 
             if self.addr_abs & 0xFF00 != self.pc & 0xFF00 {
                 self.cycles += 1;
@@ -648,7 +655,13 @@ impl Cpu {
     fn bvc(&mut self) -> bool {
         if self.get_flag(V) == false {
             self.cycles += 1;
-            self.addr_abs = self.pc + self.addr_abs;
+            let rel = self.addr_rel as i16;
+
+            if rel > 0 {
+                self.addr_abs = self.pc + rel.abs() as u16;
+            } else {
+                self.addr_abs = self.pc - rel.abs() as u16;
+            }
 
             if self.addr_abs & 0xFF00 != self.pc & 0xFF00 {
                 self.cycles += 1;
@@ -662,7 +675,14 @@ impl Cpu {
     fn bvs(&mut self) -> bool {
         if self.get_flag(V) == true {
             self.cycles += 1;
-            self.addr_abs = self.pc + self.addr_abs;
+
+            let rel = self.addr_rel as i16;
+
+            if rel > 0 {
+                self.addr_abs = self.pc + rel.abs() as u16;
+            } else {
+                self.addr_abs = self.pc - rel.abs() as u16;
+            }
 
             if self.addr_abs & 0xFF00 != self.pc & 0xFF00 {
                 self.cycles += 1;
@@ -715,7 +735,7 @@ impl Cpu {
     fn cpx(&mut self) -> bool {
         self.fetch();
 
-        let temp = self.x as u16 - self.fetched as u16;
+        let temp = self.x.wrapping_sub(self.fetched);
 
         self.set_flag(C, self.x >= self.fetched);
 
@@ -729,7 +749,7 @@ impl Cpu {
     fn cpy(&mut self) -> bool {
         self.fetch();
 
-        let temp = self.y as u16 - self.fetched as u16;
+        let temp = self.y.wrapping_sub(self.fetched);
 
         self.set_flag(C, self.y >= self.fetched);
 
@@ -743,7 +763,7 @@ impl Cpu {
     fn dec(&mut self) -> bool {
         self.fetch();
 
-        let temp = self.fetched - 1;
+        let temp = self.fetched.wrapping_sub(1);
 
         self.write(self.addr_abs, temp & 0x00FF);
 
@@ -755,9 +775,7 @@ impl Cpu {
     }
 
     fn dex(&mut self) -> bool {
-        if self.x > 0 {
-            self.x -= 1;
-        }
+        self.x = self.x.wrapping_sub(1);
 
         self.set_flag(Z, self.x == 0x00);
 
@@ -767,7 +785,7 @@ impl Cpu {
     }
 
     fn dey(&mut self) -> bool {
-        self.y -= 1;
+        self.y = self.y.wrapping_sub(1);
 
         self.set_flag(Z, self.y == 0x00);
 
@@ -791,7 +809,7 @@ impl Cpu {
     fn inc(&mut self) -> bool {
         self.fetch();
 
-        let temp = self.fetched + 1;
+        let temp = self.fetched.wrapping_add(1);
 
         self.write(self.addr_abs, temp & 0x00FF);
 
@@ -803,7 +821,7 @@ impl Cpu {
     }
 
     fn inx(&mut self) -> bool {
-        self.x += 1;
+        self.x = self.x.wrapping_add(1);
 
         self.set_flag(Z, self.x == 0x00);
 
@@ -813,7 +831,7 @@ impl Cpu {
     }
 
     fn iny(&mut self) -> bool {
-        self.y += 1;
+        self.y = self.y.wrapping_add(1);
 
         self.set_flag(Z, self.y == 0x00);
 
@@ -927,7 +945,7 @@ impl Cpu {
     }
 
     fn php(&mut self) -> bool {
-        self.write(0x0100 + self.stkp as u16, self.a | B as u8 | U as u8);
+        self.write(0x0100 + self.stkp as u16, self.status | B as u8 | U as u8);
         self.set_flag(B, false);
         self.set_flag(U, false);
         self.stkp -= 1;
@@ -999,7 +1017,7 @@ impl Cpu {
         self.stkp += 1;
         self.pc = self.read(0x0100 + self.stkp as u16) as u16;
         self.stkp += 1;
-        self.pc |= (self.read(0x0100 + self.stkp as u16) << 8) as u16;
+        self.pc |= (self.read(0x0100 + self.stkp as u16) as u16) << 8;
 
         return false;
     }

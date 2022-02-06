@@ -1,11 +1,6 @@
-use std::cell::RefCell;
-use std::fs::File;
-use std::io::Read;
-use std::rc::Rc;
-use std::time::Instant;
-use piston::{EventLoop, EventSettings, UpdateArgs};
-use nes_emulator::{advance, create_system, Display};
-use rand::{Rng, thread_rng};
+use nes_emulator::{create_system};
+use nes_emulator::display::display::Game;
+use nes_emulator::display::display_snake::SnakeGame;
 
 fn main() {
     let game_code = vec![
@@ -31,37 +26,17 @@ fn main() {
         0xea, 0xca, 0xd0, 0xfb, 0x60
     ];
 
-    let (bus_ref, cpu_ref, ppu_ref, state_ref) = create_system();
+    let (_bus_ref, cpu_ref, ppu_ref, state_ref) = create_system();
 
     state_ref.as_ref().borrow_mut().load(game_code, 0x0600);
     cpu_ref.as_ref().borrow_mut().reset();
 
-    let mut display = Display::new(
+    let mut game = SnakeGame::new(
         state_ref.clone(),
         cpu_ref.clone(),
-        false
+        ppu_ref.clone()
     );
 
-    let mut rng = Rc::new(RefCell::new(thread_rng()));
-    let mut settings = EventSettings::new();
-    settings.set_ups(5);
-
-    display.start(settings,
-        |event| {
-
-            let mut ppu= ppu_ref.as_ref().borrow_mut();
-            let mut cpu = cpu_ref.as_ref().borrow_mut();
-
-            let val = rng.as_ref().borrow_mut().gen_range(1, 16);
-            cpu.write(0xfe, val);
-
-            if let Ok(_) = advance(&mut ppu, &mut cpu) {
-                println!("{}", event.dt);
-            }
-        },
-        |button| {
-            println!("{:?}", button);
-        }
-    );
+    game.start();
 }
 
