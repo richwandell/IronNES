@@ -19,7 +19,7 @@ use crate::{Cpu, Ppu, State};
 use crate::{advance, create_system};
 
 struct Debug {
-    data: HashMap<String, HashMap<u16, String>>,
+    data: HashMap<String, HashMap<u32, String>>,
     visible_pages: Vec<u16>,
 }
 
@@ -42,7 +42,7 @@ impl NesDebug {
         )
     }
 
-    fn get_disassembly(&mut self) -> HashMap<u16, String> {
+    fn get_disassembly(&mut self) -> HashMap<u32, String> {
         if let Some(items) = self.1.data.remove("disassembly") {
             return items;
         } else {
@@ -51,7 +51,7 @@ impl NesDebug {
         }
     }
 
-    fn set_disassembly(&mut self, disassembly: HashMap<u16, String>) {
+    fn set_disassembly(&mut self, disassembly: HashMap<u32, String>) {
         self.1.data.insert("disassembly".to_string(), disassembly);
     }
 
@@ -106,7 +106,7 @@ impl Game for NesDebug {
         {
             let mut cpu = self.0.cpu.as_ref().borrow_mut();
             let mut ppu = self.0.ppu.as_ref().borrow_mut();
-            while cpu.pc != 0xCFF0 {
+            while cpu.pc != 0xEB9e {
                 let write_string = hex::encode(&cpu.pc.to_be_bytes());
                 if let Err(e) = writeln!(file, "{}", write_string.to_uppercase()) {
                     eprintln!("Couldn't write to file: {}", e);

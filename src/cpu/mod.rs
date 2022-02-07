@@ -1,5 +1,6 @@
 pub(crate) mod cpu_6502;
 mod tests;
+mod instructions;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Flags
@@ -23,7 +24,7 @@ pub(crate) enum Flags
 }
 
 #[derive(Clone, Debug, PartialEq)]
-enum Opcodes {
+pub(crate) enum Opcodes {
     Brk,
     Bpl,
     Jsr,
@@ -46,6 +47,7 @@ enum Opcodes {
     Adc,
     Sta,
     Lda,
+    Lax,
     Cmp,
     Sbc,
     Xxx,
@@ -57,8 +59,11 @@ enum Opcodes {
     Lsr,
     Ror,
     Stx,
+    Sax,
     Dec,
+    Dcp,
     Inc,
+    Isb,
     Php,
     Clc,
     Plp,
@@ -84,7 +89,7 @@ enum Opcodes {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-enum AddressModes {
+pub(crate) enum AddressModes {
     Imp,
     Imm,
     Rel,

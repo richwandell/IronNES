@@ -30,7 +30,7 @@ fn main() {
         state_ref.clone(),
         cpu_ref.clone(),
         ppu_ref.clone(),
-        vec![0x0000, 0x8000, 0xFF00]
+        vec![0x0000, 0x0400, 0xC600]
     );
     game.start();
 }

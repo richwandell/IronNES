@@ -15,7 +15,7 @@ pub(crate) fn draw_debug(
     cpu: &Cpu,
     context: Context,
     mut glyphs: &mut GlyphCache,
-    disassembly: &HashMap<u16, String>,
+    disassembly: &HashMap<u32, String>,
     gl: &mut GlGraphics,
     visible_pages: &Vec<u16>
 ) {
@@ -130,7 +130,7 @@ pub(crate) fn draw_debug(
     let mut c_line = 0;
     let mut c_addr = 0;
     while c_line < n_lines {
-        let instruction = cpu.pc + c_addr;
+        let instruction = cpu.pc as u32 + c_addr;
         if let Some(dis_inst) = disassembly.get(&instruction) {
             draw_string!(&dis_inst, x, y, COLOR_WHITE);
             y += text_size;

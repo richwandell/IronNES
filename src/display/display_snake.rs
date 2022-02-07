@@ -72,8 +72,9 @@ impl SnakeGame {
         let mut state = self.0.state.as_ref().borrow_mut();
         match args {
             Button::Keyboard(key) => {
+                println!("{:?}", key);
                 if key.eq(&Key::Up) {
-                    cpu_write(&mut state, 0xff, 0x7);
+                    cpu_write(&mut state, 0xff, 0x77);
                 } else if key.eq(&Key::Down) {
                     cpu_write(&mut state, 0xff, 0x73);
                 } else if key.eq(&Key::Left) {
@@ -91,7 +92,7 @@ impl Game for SnakeGame {
     fn start(&mut self) {
         let mut events = Events::new(EventSettings {
             max_fps: 60,
-            ups: 10000,
+            ups: 7000,
             swap_buffers: true,
             bench_mode: false,
             lazy: false,
@@ -111,7 +112,9 @@ impl Game for SnakeGame {
 
             if let Some(args) = e.render_args() {
                 self.render(args, &mut d_img, &mut texture);
-            } else if let Some(_args) = e.update_args() {
+            }
+
+            if let Some(_args) = e.update_args() {
                 let mut ppu = self.0.ppu.as_ref().borrow_mut();
                 let mut cpu = self.0.cpu.as_ref().borrow_mut();
 

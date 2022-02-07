@@ -7,6 +7,7 @@ use crate::bus::{Bus, cpu_read, cpu_write};
 use crate::cpu::Flags::{U, I, B, C, Z, V, N, D};
 use crate::cpu::{Flags, Opcodes, AddressModes};
 use crate::cpu::AddressModes::Imp;
+use crate::cpu::instructions::make_instructions;
 use crate::state::State;
 
 pub struct Cpu {
@@ -39,11 +40,11 @@ pub struct Cpu {
 }
 
 #[allow(dead_code)]
-struct Instruction {
-    name: String,
-    operate: Opcodes,
-    addr: AddressModes,
-    cycles: usize
+pub(crate) struct Instruction {
+    pub(crate) name: String,
+    pub(crate) operate: Opcodes,
+    pub(crate) addr: AddressModes,
+    pub(crate) cycles: usize
 }
 
 #[allow(arithmetic_overflow, dead_code)]
@@ -64,24 +65,7 @@ impl Cpu {
             stkp: 0x00,
             status: 0x00,
             fetched: 0x00,
-            lookup: vec![
-                Instruction{ name: "Brk".to_string(), operate: Opcodes::Brk, addr: AddressModes::Imm, cycles: 7}, Instruction{ name: "Ora".to_string(), operate: Opcodes::Ora, addr: AddressModes::Izx, cycles: 6}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 8}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 3}, Instruction{ name: "Ora".to_string(), operate: Opcodes::Ora, addr: AddressModes::Zp0, cycles: 3}, Instruction{ name: "Asl".to_string(), operate: Opcodes::Asl, addr: AddressModes::Zp0, cycles: 5}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 5}, Instruction{ name: "Php".to_string(), operate: Opcodes::Php, addr: AddressModes::Imp, cycles: 3}, Instruction{ name: "Ora".to_string(), operate: Opcodes::Ora, addr: AddressModes::Imm, cycles: 2}, Instruction{ name: "Asl".to_string(), operate: Opcodes::Asl, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 4}, Instruction{ name: "Ora".to_string(), operate: Opcodes::Ora, addr: AddressModes::Abs, cycles: 4}, Instruction{ name: "Asl".to_string(), operate: Opcodes::Asl, addr: AddressModes::Abs, cycles: 6}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 6},
-                Instruction{ name: "Bpl".to_string(), operate: Opcodes::Bpl, addr: AddressModes::Rel, cycles: 2}, Instruction{ name: "Ora".to_string(), operate: Opcodes::Ora, addr: AddressModes::Izy, cycles: 5}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 8}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 4}, Instruction{ name: "Ora".to_string(), operate: Opcodes::Ora, addr: AddressModes::Zpx, cycles: 4}, Instruction{ name: "Asl".to_string(), operate: Opcodes::Asl, addr: AddressModes::Zpx, cycles: 6}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 6}, Instruction{ name: "Clc".to_string(), operate: Opcodes::Clc, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "Ora".to_string(), operate: Opcodes::Ora, addr: AddressModes::Aby, cycles: 4}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 7}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 4}, Instruction{ name: "Ora".to_string(), operate: Opcodes::Ora, addr: AddressModes::Abx, cycles: 4}, Instruction{ name: "Asl".to_string(), operate: Opcodes::Asl, addr: AddressModes::Abx, cycles: 7}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 7},
-                Instruction{ name: "Jsr".to_string(), operate: Opcodes::Jsr, addr: AddressModes::Abs, cycles: 6}, Instruction{ name: "And".to_string(), operate: Opcodes::And, addr: AddressModes::Izx, cycles: 6}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 8}, Instruction{ name: "Bit".to_string(), operate: Opcodes::Bit, addr: AddressModes::Zp0, cycles: 3}, Instruction{ name: "And".to_string(), operate: Opcodes::And, addr: AddressModes::Zp0, cycles: 3}, Instruction{ name: "Rol".to_string(), operate: Opcodes::Rol, addr: AddressModes::Zp0, cycles: 5}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 5}, Instruction{ name: "Plp".to_string(), operate: Opcodes::Plp, addr: AddressModes::Imp, cycles: 4}, Instruction{ name: "And".to_string(), operate: Opcodes::And, addr: AddressModes::Imm, cycles: 2}, Instruction{ name: "Rol".to_string(), operate: Opcodes::Rol, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "Bit".to_string(), operate: Opcodes::Bit, addr: AddressModes::Abs, cycles: 4}, Instruction{ name: "And".to_string(), operate: Opcodes::And, addr: AddressModes::Abs, cycles: 4}, Instruction{ name: "Rol".to_string(), operate: Opcodes::Rol, addr: AddressModes::Abs, cycles: 6}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 6},
-                Instruction{ name: "Bmi".to_string(), operate: Opcodes::Bmi, addr: AddressModes::Rel, cycles: 2}, Instruction{ name: "And".to_string(), operate: Opcodes::And, addr: AddressModes::Izy, cycles: 5}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 8}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 4}, Instruction{ name: "And".to_string(), operate: Opcodes::And, addr: AddressModes::Zpx, cycles: 4}, Instruction{ name: "Rol".to_string(), operate: Opcodes::Rol, addr: AddressModes::Zpx, cycles: 6}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 6}, Instruction{ name: "Sec".to_string(), operate: Opcodes::Sec, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "And".to_string(), operate: Opcodes::And, addr: AddressModes::Aby, cycles: 4}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 7}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 4}, Instruction{ name: "And".to_string(), operate: Opcodes::And, addr: AddressModes::Abx, cycles: 4}, Instruction{ name: "Rol".to_string(), operate: Opcodes::Rol, addr: AddressModes::Abx, cycles: 7}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 7},
-                Instruction{ name: "Rti".to_string(), operate: Opcodes::Rti, addr: AddressModes::Imp, cycles: 6}, Instruction{ name: "Eor".to_string(), operate: Opcodes::Eor, addr: AddressModes::Izx, cycles: 6}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 8}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 3}, Instruction{ name: "Eor".to_string(), operate: Opcodes::Eor, addr: AddressModes::Zp0, cycles: 3}, Instruction{ name: "Lsr".to_string(), operate: Opcodes::Lsr, addr: AddressModes::Zp0, cycles: 5}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 5}, Instruction{ name: "Pha".to_string(), operate: Opcodes::Pha, addr: AddressModes::Imp, cycles: 3}, Instruction{ name: "Eor".to_string(), operate: Opcodes::Eor, addr: AddressModes::Imm, cycles: 2}, Instruction{ name: "Lsr".to_string(), operate: Opcodes::Lsr, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "Jmp".to_string(), operate: Opcodes::Jmp, addr: AddressModes::Abs, cycles: 3}, Instruction{ name: "Eor".to_string(), operate: Opcodes::Eor, addr: AddressModes::Abs, cycles: 4}, Instruction{ name: "Lsr".to_string(), operate: Opcodes::Lsr, addr: AddressModes::Abs, cycles: 6}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 6},
-                Instruction{ name: "Bvc".to_string(), operate: Opcodes::Bvc, addr: AddressModes::Rel, cycles: 2}, Instruction{ name: "Eor".to_string(), operate: Opcodes::Eor, addr: AddressModes::Izy, cycles: 5}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 8}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 4}, Instruction{ name: "Eor".to_string(), operate: Opcodes::Eor, addr: AddressModes::Zpx, cycles: 4}, Instruction{ name: "Lsr".to_string(), operate: Opcodes::Lsr, addr: AddressModes::Zpx, cycles: 6}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 6}, Instruction{ name: "Cli".to_string(), operate: Opcodes::Cli, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "Eor".to_string(), operate: Opcodes::Eor, addr: AddressModes::Aby, cycles: 4}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 7}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 4}, Instruction{ name: "Eor".to_string(), operate: Opcodes::Eor, addr: AddressModes::Abx, cycles: 4}, Instruction{ name: "Lsr".to_string(), operate: Opcodes::Lsr, addr: AddressModes::Abx, cycles: 7}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 7},
-                Instruction{ name: "Rts".to_string(), operate: Opcodes::Rts, addr: AddressModes::Imp, cycles: 6}, Instruction{ name: "Adc".to_string(), operate: Opcodes::Adc, addr: AddressModes::Izx, cycles: 6}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 8}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 3}, Instruction{ name: "Adc".to_string(), operate: Opcodes::Adc, addr: AddressModes::Zp0, cycles: 3}, Instruction{ name: "Ror".to_string(), operate: Opcodes::Ror, addr: AddressModes::Zp0, cycles: 5}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 5}, Instruction{ name: "Pla".to_string(), operate: Opcodes::Pla, addr: AddressModes::Imp, cycles: 4}, Instruction{ name: "Adc".to_string(), operate: Opcodes::Adc, addr: AddressModes::Imm, cycles: 2}, Instruction{ name: "Ror".to_string(), operate: Opcodes::Ror, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "Jmp".to_string(), operate: Opcodes::Jmp, addr: AddressModes::Ind, cycles: 5}, Instruction{ name: "Adc".to_string(), operate: Opcodes::Adc, addr: AddressModes::Abs, cycles: 4}, Instruction{ name: "Ror".to_string(), operate: Opcodes::Ror, addr: AddressModes::Abs, cycles: 6}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 6},
-                Instruction{ name: "Bvs".to_string(), operate: Opcodes::Bvs, addr: AddressModes::Rel, cycles: 2}, Instruction{ name: "Adc".to_string(), operate: Opcodes::Adc, addr: AddressModes::Izy, cycles: 5}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 8}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 4}, Instruction{ name: "Adc".to_string(), operate: Opcodes::Adc, addr: AddressModes::Zpx, cycles: 4}, Instruction{ name: "Ror".to_string(), operate: Opcodes::Ror, addr: AddressModes::Zpx, cycles: 6}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 6}, Instruction{ name: "Sei".to_string(), operate: Opcodes::Sei, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "Adc".to_string(), operate: Opcodes::Adc, addr: AddressModes::Aby, cycles: 4}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 7}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 4}, Instruction{ name: "Adc".to_string(), operate: Opcodes::Adc, addr: AddressModes::Abx, cycles: 4}, Instruction{ name: "Ror".to_string(), operate: Opcodes::Ror, addr: AddressModes::Abx, cycles: 7}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 7},
-                Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "Sta".to_string(), operate: Opcodes::Sta, addr: AddressModes::Izx, cycles: 6}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 6}, Instruction{ name: "Sty".to_string(), operate: Opcodes::Sty, addr: AddressModes::Zp0, cycles: 3}, Instruction{ name: "Sta".to_string(), operate: Opcodes::Sta, addr: AddressModes::Zp0, cycles: 3}, Instruction{ name: "Stx".to_string(), operate: Opcodes::Stx, addr: AddressModes::Zp0, cycles: 3}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 3}, Instruction{ name: "Dey".to_string(), operate: Opcodes::Dey, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "Txa".to_string(), operate: Opcodes::Txa, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "Sty".to_string(), operate: Opcodes::Sty, addr: AddressModes::Abs, cycles: 4}, Instruction{ name: "Sta".to_string(), operate: Opcodes::Sta, addr: AddressModes::Abs, cycles: 4}, Instruction{ name: "Stx".to_string(), operate: Opcodes::Stx, addr: AddressModes::Abs, cycles: 4}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 4},
-                Instruction{ name: "Bcc".to_string(), operate: Opcodes::Bcc, addr: AddressModes::Rel, cycles: 2}, Instruction{ name: "Sta".to_string(), operate: Opcodes::Sta, addr: AddressModes::Izy, cycles: 6}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 6}, Instruction{ name: "Sty".to_string(), operate: Opcodes::Sty, addr: AddressModes::Zpx, cycles: 4}, Instruction{ name: "Sta".to_string(), operate: Opcodes::Sta, addr: AddressModes::Zpx, cycles: 4}, Instruction{ name: "Stx".to_string(), operate: Opcodes::Stx, addr: AddressModes::Zpy, cycles: 4}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 4}, Instruction{ name: "Tya".to_string(), operate: Opcodes::Tya, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "Sta".to_string(), operate: Opcodes::Sta, addr: AddressModes::Aby, cycles: 5}, Instruction{ name: "Txs".to_string(), operate: Opcodes::Txs, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 5}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 5}, Instruction{ name: "Sta".to_string(), operate: Opcodes::Sta, addr: AddressModes::Abx, cycles: 5}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 5}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 5},
-                Instruction{ name: "Ldy".to_string(), operate: Opcodes::Ldy, addr: AddressModes::Imm, cycles: 2}, Instruction{ name: "Lda".to_string(), operate: Opcodes::Lda, addr: AddressModes::Izx, cycles: 6}, Instruction{ name: "Ldx".to_string(), operate: Opcodes::Ldx, addr: AddressModes::Imm, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 6}, Instruction{ name: "Ldy".to_string(), operate: Opcodes::Ldy, addr: AddressModes::Zp0, cycles: 3}, Instruction{ name: "Lda".to_string(), operate: Opcodes::Lda, addr: AddressModes::Zp0, cycles: 3}, Instruction{ name: "Ldx".to_string(), operate: Opcodes::Ldx, addr: AddressModes::Zp0, cycles: 3}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 3}, Instruction{ name: "Tay".to_string(), operate: Opcodes::Tay, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "Lda".to_string(), operate: Opcodes::Lda, addr: AddressModes::Imm, cycles: 2}, Instruction{ name: "Tax".to_string(), operate: Opcodes::Tax, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "Ldy".to_string(), operate: Opcodes::Ldy, addr: AddressModes::Abs, cycles: 4}, Instruction{ name: "Lda".to_string(), operate: Opcodes::Lda, addr: AddressModes::Abs, cycles: 4}, Instruction{ name: "Ldx".to_string(), operate: Opcodes::Ldx, addr: AddressModes::Abs, cycles: 4}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 4},
-                Instruction{ name: "Bcs".to_string(), operate: Opcodes::Bcs, addr: AddressModes::Rel, cycles: 2}, Instruction{ name: "Lda".to_string(), operate: Opcodes::Lda, addr: AddressModes::Izy, cycles: 5}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 5}, Instruction{ name: "Ldy".to_string(), operate: Opcodes::Ldy, addr: AddressModes::Zpx, cycles: 4}, Instruction{ name: "Lda".to_string(), operate: Opcodes::Lda, addr: AddressModes::Zpx, cycles: 4}, Instruction{ name: "Ldx".to_string(), operate: Opcodes::Ldx, addr: AddressModes::Zpy, cycles: 4}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 4}, Instruction{ name: "Clv".to_string(), operate: Opcodes::Clv, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "Lda".to_string(), operate: Opcodes::Lda, addr: AddressModes::Aby, cycles: 4}, Instruction{ name: "Tsx".to_string(), operate: Opcodes::Tsx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 4}, Instruction{ name: "Ldy".to_string(), operate: Opcodes::Ldy, addr: AddressModes::Abx, cycles: 4}, Instruction{ name: "Lda".to_string(), operate: Opcodes::Lda, addr: AddressModes::Abx, cycles: 4}, Instruction{ name: "Ldx".to_string(), operate: Opcodes::Ldx, addr: AddressModes::Aby, cycles: 4}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 4},
-                Instruction{ name: "Cpy".to_string(), operate: Opcodes::Cpy, addr: AddressModes::Imm, cycles: 2}, Instruction{ name: "Cmp".to_string(), operate: Opcodes::Cmp, addr: AddressModes::Izx, cycles: 6}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 8}, Instruction{ name: "Cpy".to_string(), operate: Opcodes::Cpy, addr: AddressModes::Zp0, cycles: 3}, Instruction{ name: "Cmp".to_string(), operate: Opcodes::Cmp, addr: AddressModes::Zp0, cycles: 3}, Instruction{ name: "Dec".to_string(), operate: Opcodes::Dec, addr: AddressModes::Zp0, cycles: 5}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 5}, Instruction{ name: "Iny".to_string(), operate: Opcodes::Iny, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "Cmp".to_string(), operate: Opcodes::Cmp, addr: AddressModes::Imm, cycles: 2}, Instruction{ name: "Dex".to_string(), operate: Opcodes::Dex, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "Cpy".to_string(), operate: Opcodes::Cpy, addr: AddressModes::Abs, cycles: 4}, Instruction{ name: "Cmp".to_string(), operate: Opcodes::Cmp, addr: AddressModes::Abs, cycles: 4}, Instruction{ name: "Dec".to_string(), operate: Opcodes::Dec, addr: AddressModes::Abs, cycles: 6}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 6},
-                Instruction{ name: "Bne".to_string(), operate: Opcodes::Bne, addr: AddressModes::Rel, cycles: 2}, Instruction{ name: "Cmp".to_string(), operate: Opcodes::Cmp, addr: AddressModes::Izy, cycles: 5}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 8}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 4}, Instruction{ name: "Cmp".to_string(), operate: Opcodes::Cmp, addr: AddressModes::Zpx, cycles: 4}, Instruction{ name: "Dec".to_string(), operate: Opcodes::Dec, addr: AddressModes::Zpx, cycles: 6}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 6}, Instruction{ name: "Cld".to_string(), operate: Opcodes::Cld, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "Cmp".to_string(), operate: Opcodes::Cmp, addr: AddressModes::Aby, cycles: 4}, Instruction{ name: "Nop".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 7}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 4}, Instruction{ name: "Cmp".to_string(), operate: Opcodes::Cmp, addr: AddressModes::Abx, cycles: 4}, Instruction{ name: "Dec".to_string(), operate: Opcodes::Dec, addr: AddressModes::Abx, cycles: 7}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 7},
-                Instruction{ name: "Cpx".to_string(), operate: Opcodes::Cpx, addr: AddressModes::Imm, cycles: 2}, Instruction{ name: "Sbc".to_string(), operate: Opcodes::Sbc, addr: AddressModes::Izx, cycles: 6}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 8}, Instruction{ name: "Cpx".to_string(), operate: Opcodes::Cpx, addr: AddressModes::Zp0, cycles: 3}, Instruction{ name: "Sbc".to_string(), operate: Opcodes::Sbc, addr: AddressModes::Zp0, cycles: 3}, Instruction{ name: "Inc".to_string(), operate: Opcodes::Inc, addr: AddressModes::Zp0, cycles: 5}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 5}, Instruction{ name: "Inx".to_string(), operate: Opcodes::Inx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "Sbc".to_string(), operate: Opcodes::Sbc, addr: AddressModes::Imm, cycles: 2}, Instruction{ name: "Nop".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Sbc, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "Cpx".to_string(), operate: Opcodes::Cpx, addr: AddressModes::Abs, cycles: 4}, Instruction{ name: "Sbc".to_string(), operate: Opcodes::Sbc, addr: AddressModes::Abs, cycles: 4}, Instruction{ name: "Inc".to_string(), operate: Opcodes::Inc, addr: AddressModes::Abs, cycles: 6}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 6},
-                Instruction{ name: "Beq".to_string(), operate: Opcodes::Beq, addr: AddressModes::Rel, cycles: 2}, Instruction{ name: "Sbc".to_string(), operate: Opcodes::Sbc, addr: AddressModes::Izy, cycles: 5}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 8}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 4}, Instruction{ name: "Sbc".to_string(), operate: Opcodes::Sbc, addr: AddressModes::Zpx, cycles: 4}, Instruction{ name: "Inc".to_string(), operate: Opcodes::Inc, addr: AddressModes::Zpx, cycles: 6}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 6}, Instruction{ name: "Sed".to_string(), operate: Opcodes::Sed, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "Sbc".to_string(), operate: Opcodes::Sbc, addr: AddressModes::Aby, cycles: 4}, Instruction{ name: "Nop".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 2}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 7}, Instruction{ name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Imp, cycles: 4}, Instruction{ name: "Sbc".to_string(), operate: Opcodes::Sbc, addr: AddressModes::Abx, cycles: 4}, Instruction{ name: "Inc".to_string(), operate: Opcodes::Inc, addr: AddressModes::Abx, cycles: 7}, Instruction{ name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 7},
-            ]
+            lookup: make_instructions()
         }
     }
 
@@ -164,7 +148,11 @@ impl Cpu {
                 Opcodes::Tax => self.tax(),
                 Opcodes::Tsx => self.tsx(),
                 Opcodes::Dex => self.dex(),
-                Opcodes::Jmp => self.jmp()
+                Opcodes::Jmp => self.jmp(),
+                Opcodes::Lax => self.lax(),
+                Opcodes::Sax => self.sax(),
+                Opcodes::Dcp => self.dcp(),
+                Opcodes::Isb => self.isb()
             };
 
             self.cycles += additional_cycle1;
@@ -400,8 +388,9 @@ impl Cpu {
         let t = self.read(self.pc) as u16;
         self.pc += 1;
 
-        let lo = (self.read(t + self.x as u16) & 0x00FF) as u16;
-        let hi = (self.read(t + self.x as u16 + 1) & 0x00FF) as u16;
+        let addr = t + self.x as u16;
+        let lo = self.read(addr & 0x00FF) as u16;
+        let hi = self.read((addr + 1) & 0x00FF) as u16;
 
         self.addr_abs = (hi << 8) | lo;
 
@@ -475,6 +464,8 @@ impl Cpu {
         return true;
     }
 
+
+
     fn asl(&mut self) -> bool {
         self.fetch();
 
@@ -538,6 +529,7 @@ impl Cpu {
     fn beq(&mut self) -> bool {
         if self.get_flag(Z) == true {
             self.cycles += 1;
+
             let rel = self.addr_rel as i16;
             if rel > 0 {
                 self.addr_abs = self.pc + rel.abs() as u16;
@@ -883,6 +875,140 @@ impl Cpu {
         return true;
     }
 
+    fn lax(&mut self) -> bool {
+        self.fetch();
+        self.a = self.fetched;
+        self.x = self.a;
+
+        self.set_flag(Z, self.x == 0x00);
+
+        self.set_flag(N, self.x & 0x80 > 0);
+
+        return true;
+    }
+
+    fn sax(&mut self) -> bool {
+        let data = self.a & self.x;
+        self.write(self.addr_abs, data);
+        return false;
+    }
+
+    fn dcp(&mut self) -> bool {
+        self.fetch();
+        let data = self.fetched.wrapping_sub(1);
+        self.write(self.addr_abs, data);
+
+        if data <= self.a {
+            self.set_flag(C, true);
+        }
+
+        let tmp = self.a.wrapping_sub(data);
+        self.set_flag(Z, tmp == 0x00);
+
+        self.set_flag(N, tmp & 0x80 > 0);
+
+        return false;
+    }
+
+    // fn add_to_register_a(&mut self, data: u8) {
+    //     let sum = self.register_a as u16
+    //         + data as u16
+    //         + (if self.status.contains(CpuFlags::CARRY) {
+    //         1
+    //     } else {
+    //         0
+    //     }) as u16;
+    //
+    //     let carry = sum > 0xff;
+    //
+    //     if carry {
+    //         self.status.insert(CpuFlags::CARRY);
+    //     } else {
+    //         self.status.remove(CpuFlags::CARRY);
+    //     }
+    //
+    //     let result = sum as u8;
+    //
+    //     if (data ^ result) & (result ^ self.register_a) & 0x80 != 0 {
+    //         self.status.insert(CpuFlags::OVERFLOW);
+    //     } else {
+    //         self.status.remove(CpuFlags::OVERFLOW)
+    //     }
+    //
+    //     self.set_register_a(result);
+    // }
+
+    // fn isb(&mut self) -> bool {
+    //
+    //     self.fetch();
+    //
+    //     let data = self.fetched.wrapping_add(1);
+    //
+    //     self.write(self.addr_abs, data);
+    //
+    //     self.a = self.a.wrapping_sub(data);
+    //
+    //     if !self.get_flag(C) {
+    //         self.a = self.a.wrapping_sub(1);
+    //     }
+    //
+    //     self.set_flag(Z, self.a == 0x00);
+    //
+    //     self.set_flag(N, self.a & 0x80 > 0);
+    //
+    //     self.set_flag(V, (!(self.a as u16 ^ self.fetched as u16) & (self.a as u16 ^ data as u16)) & 0x0080 > 0);
+    //
+    //
+    //     return false;
+    // }
+
+    fn isb(&mut self) -> bool {
+        self.inc();
+
+        self.fetch();
+
+        let sum = (self.a as u16).wrapping_sub(self.fetched as u16)
+            .wrapping_sub(self.get_flag(C) as u16);
+
+        self.set_flag(C, sum > 0xff);
+
+        let result = sum as u8;
+
+        if (self.fetched ^ result) & (result ^ self.a) & 0x80 != 0 {
+            self.set_flag(V, true);
+        } else {
+            self.set_flag(V, false);
+        }
+
+        self.a = result;
+
+        if self.get_flag(C) {
+            self.a = self.a.wrapping_sub(1);
+        }
+
+        // self.write(self.addr_abs, data);
+
+        // tmpi = A - tmp8 - (1 - FLAG_C);
+        // FLAG_C = ((tmpi & 0xFF00) == 0) ? 1 : 0;
+        // FLAG_V = (((A ^ tmp8) & (A ^ tmpi)) & 0x80) ? 1 : 0;
+        // A = (u8)tmpi;
+
+        // self.a = self.a.wrapping_sub(data);
+        //
+        // if !self.get_flag(C) {
+        //     self.a = self.a.wrapping_sub(1);
+        // }
+        //
+        // self.set_flag(Z, self.a == 0x00);
+        //
+        // self.set_flag(N, self.a & 0x80 > 0);
+        //
+        // self.set_flag(V, (!(self.a as u16 ^ self.fetched as u16) & (self.a as u16 ^ data as u16)) & 0x0080 > 0);
+
+
+        return false;
+    }
+
     fn ldy(&mut self) -> bool {
         self.fetch();
 
@@ -917,7 +1043,10 @@ impl Cpu {
 
     fn nop(&mut self) -> bool {
         match self.opcode {
-            0x1c | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => {
+            0x04 | 0x44 | 0x64 | 0x14 | 0x34 | 0x54 | 0x74 | 0xd4 | 0xf4 | 0x0c | 0x1c
+            | 0x3c | 0x5c | 0x7c | 0xdc | 0xfc => {
+                self.fetch();
+                self.addr_abs = self.addr_abs.wrapping_add(1);
                 return true;
             }
             _ => {}
@@ -1123,7 +1252,7 @@ impl Cpu {
         return false;
     }
 
-    pub(crate) fn disassemble(&mut self) -> HashMap<u16, String> {
+    pub(crate) fn disassemble(&mut self) -> HashMap<u32, String> {
         let mut addr: u32 = 0;
         let stop_addr = 0xFFFF;
 
@@ -1204,7 +1333,7 @@ impl Cpu {
                                      hex::encode(&addr_value.to_be_bytes()),
                                      "{REL}");
             }
-            map.insert(line_addr as u16, dis_string);
+            map.insert(line_addr as u32, dis_string);
         }
         map
     }
