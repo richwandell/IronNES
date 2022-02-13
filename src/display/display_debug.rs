@@ -109,7 +109,7 @@ impl Game for NesDebug {
         {
             let mut cpu = self.0.cpu.as_ref().borrow_mut();
             let mut ppu = self.0.ppu.as_ref().borrow_mut();
-            while cpu.pc != 0xEBb9 {
+            while cpu.pc != 0xEF07 {
                 let write_string = hex::encode(&cpu.pc.to_be_bytes());
                 if let Err(e) = writeln!(file, "{}", write_string.to_uppercase()) {
                     eprintln!("Couldn't write to file: {}", e);

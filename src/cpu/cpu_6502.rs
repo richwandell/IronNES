@@ -152,7 +152,8 @@ impl Cpu {
                 Opcodes::Lax => self.lax(),
                 Opcodes::Sax => self.sax(),
                 Opcodes::Dcp => self.dcp(),
-                Opcodes::Isb => self.isb()
+                Opcodes::Isb => self.isb(),
+                Opcodes::Slo => self.slo()
             };
 
             self.cycles += additional_cycle1;
@@ -465,7 +466,7 @@ impl Cpu {
     }
 
 
-
+    // Arithmetic Shift Left
     fn asl(&mut self) -> bool {
         self.fetch();
 
@@ -914,58 +915,21 @@ impl Cpu {
         return false;
     }
 
-    // fn add_to_register_a(&mut self, data: u8) {
-    //     let sum = self.register_a as u16
-    //         + data as u16
-    //         + (if self.status.contains(CpuFlags::CARRY) {
-    //         1
-    //     } else {
-    //         0
-    //     }) as u16;
-    //
-    //     let carry = sum > 0xff;
-    //
-    //     if carry {
-    //         self.status.insert(CpuFlags::CARRY);
-    //     } else {
-    //         self.status.remove(CpuFlags::CARRY);
-    //     }
-    //
-    //     let result = sum as u8;
-    //
-    //     if (data ^ result) & (result ^ self.register_a) & 0x80 != 0 {
-    //         self.status.insert(CpuFlags::OVERFLOW);
-    //     } else {
-    //         self.status.remove(CpuFlags::OVERFLOW)
-    //     }
-    //
-    //     self.set_register_a(result);
-    // }
+    /**
+    ISB is something like this...
 
-    // fn isb(&mut self) -> bool {
-    //
-    //     self.fetch();
-    //
-    //     let data = self.fetched.wrapping_add(1);
-    //
-    //     self.write(self.addr_abs, data);
-    //
-    //     self.a = self.a.wrapping_sub(data);
-    //
-    //     if !self.get_flag(C) {
-    //         self.a = self.a.wrapping_sub(1);
-    //     }
-    //
-    //     self.set_flag(Z, self.a == 0x00);
-    //
-    //     self.set_flag(N, self.a & 0x80 > 0);
-    //
-    //     self.set_flag(V, (!(self.a as u16 ^ self.fetched as u16) & (self.a as u16 ^ data as u16)) & 0x0080 > 0);
-    //
-    //
-    //     return false;
-    // }
+    1. increment the addressed value
+    2. subtract the addressed value from the accumulator and subtract 1 if the cary flag is not set
+    3. set cary flag
+    4. set overflow flag
+    5. set negative flag
+    6. set zero flag
 
+    tmpi = A - tmp8 - (1 - FLAG_C);
+    FLAG_C = ((tmpi & 0xFF00) == 0) ? 1 : 0;
+    FLAG_V = (((A ^ tmp8) & (A ^ tmpi)) & 0x80) ? 1 : 0;
+    A = (u8)tmpi;
+    **/
     fn isb(&mut self) -> bool {
         self.inc();
 
@@ -989,25 +953,38 @@ impl Cpu {
         self.set_flag(N, self.a & 0x80 > 0);
         self.set_flag(Z, self.a == 0x00);
 
-        // self.write(self.addr_abs, data);
+        return false;
+    }
 
-        // tmpi = A - tmp8 - (1 - FLAG_C);
-        // FLAG_C = ((tmpi & 0xFF00) == 0) ? 1 : 0;
-        // FLAG_V = (((A ^ tmp8) & (A ^ tmpi)) & 0x80) ? 1 : 0;
-        // A = (u8)tmpi;
+    // 	{adr}:={adr}*2 A:=A or {adr}
+    fn slo(&mut self) -> bool {
 
-        // self.a = self.a.wrapping_sub(data);
+        self.fetch();
+
+        let temp = ((self.fetched as u16) << 1);
+
+        self.set_flag(C, (temp & 0xFF00) > 0);
+
+        self.set_flag(Z, (temp & 0x00FF) == 0x0000);
+
+        self.set_flag(N, (temp & 0x0080) > 0);
+
+        if self.lookup[self.opcode as usize].addr == AddressModes::Imp {
+            self.a = (temp & 0x00FF) as u8;
+        } else {
+            self.write(self.addr_abs, (temp & 0x00FF) as u8);
+        }
+
+        self.ora();
+
+        // self.fetch();
         //
-        // if !self.get_flag(C) {
-        //     self.a = self.a.wrapping_sub(1);
-        // }
+        // let temp = ((self.a as u16) | (self.fetched as u16)) - (add as u16);
         //
-        // self.set_flag(Z, self.a == 0x00);
+        // self.a = temp as u8;
         //
         // self.set_flag(N, self.a & 0x80 > 0);
-        //
-        // self.set_flag(V, (!(self.a as u16 ^ self.fetched as u16) & (self.a as u16 ^ data as u16)) & 0x0080 > 0);
-
+        // self.set_flag(Z, self.a == 0x00);
 
         return false;
     }
@@ -1104,7 +1081,7 @@ impl Cpu {
     fn rol(&mut self) -> bool {
         self.fetch();
 
-        let temp = (self.fetched as u16) << 1 | self.get_flag(C) as u16;
+        let temp = ((self.fetched as u16) << 1) | self.get_flag(C) as u16;
 
         self.set_flag(C, (temp & 0xFF00) > 0);
 

@@ -55,6 +55,7 @@ pub(crate) enum Opcodes {
     Bit,
     Sty,
     Asl,
+    Slo,
     Rol,
     Lsr,
     Ror,
@@ -91,11 +92,15 @@ pub(crate) enum Opcodes {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum AddressModes {
     Imp,
+    // Immediate
     Imm,
     Rel,
     Abs,
+    // Indirect X
     Izx,
+    // Indirect Y
     Izy,
+    // Zero Page
     Zp0,
     Zpx,
     Zpy,
