@@ -489,13 +489,12 @@ impl Cpu {
     fn bcc(&mut self) -> bool {
         if self.get_flag(C) == false {
             self.cycles += 1;
-            self.addr_abs = self.pc.wrapping_add(self.addr_rel);
-            // let rel = self.addr_rel as i16;
-            // if rel > 0 {
-            //     self.addr_abs = self.pc + rel.abs() as u16;
-            // } else {
-            //     self.addr_abs = self.pc - rel.abs() as u16;
-            // }
+            let rel = self.addr_rel as i16;
+            if rel > 0 {
+                self.addr_abs = self.pc + rel.abs() as u16;
+            } else {
+                self.addr_abs = self.pc - rel.abs() as u16;
+            }
 
             if self.addr_abs & 0xFF00 != self.pc & 0xFF00 {
                 self.cycles += 1;
@@ -549,7 +548,12 @@ impl Cpu {
     fn bmi(&mut self) -> bool {
         if self.get_flag(N) == true {
             self.cycles += 1;
-            self.addr_abs = self.pc.wrapping_add(self.addr_rel);
+            let rel = self.addr_rel as i16;
+            if rel > 0 {
+                self.addr_abs = self.pc + rel.abs() as u16;
+            } else {
+                self.addr_abs = self.pc - rel.abs() as u16;
+            }
 
             if self.addr_abs & 0xFF00 != self.pc & 0xFF00 {
                 self.cycles += 1;
@@ -968,9 +972,9 @@ impl Cpu {
         self.fetch();
 
         let sum = (self.a as u16).wrapping_sub(self.fetched as u16)
-            .wrapping_sub(self.get_flag(C) as u16);
+            .wrapping_sub(1 - self.get_flag(C) as u16);
 
-        self.set_flag(C, sum > 0xff);
+        self.set_flag(C, (sum & 0xFF00) == 0);
 
         let result = sum as u8;
 
@@ -982,9 +986,8 @@ impl Cpu {
 
         self.a = result;
 
-        if self.get_flag(C) {
-            self.a = self.a.wrapping_sub(1);
-        }
+        self.set_flag(N, self.a & 0x80 > 0);
+        self.set_flag(Z, self.a == 0x00);
 
         // self.write(self.addr_abs, data);
 

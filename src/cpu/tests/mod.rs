@@ -4,6 +4,7 @@ use crate::ppu::Ppu;
 
 mod flags;
 mod math;
+mod instructions;
 
 macro_rules! create_devices {
     ($var1:ident, $var2:ident) => {

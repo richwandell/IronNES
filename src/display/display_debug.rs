@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::fs::OpenOptions;
+use std::fs;
+use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::rc::Rc;
 use graphics::{clear};
@@ -97,6 +98,8 @@ impl Game for NesDebug {
         let mut texture = Texture::from_image(&d_img, &TextureSettings::new());
         // Main loop
         let mut running = false;
+        let _ = fs::remove_file("junk/debug.csv");
+        let _ = File::create("junk/debug.csv");
         let mut file = OpenOptions::new()
             .write(true)
             .append(true)
@@ -106,7 +109,7 @@ impl Game for NesDebug {
         {
             let mut cpu = self.0.cpu.as_ref().borrow_mut();
             let mut ppu = self.0.ppu.as_ref().borrow_mut();
-            while cpu.pc != 0xEB9e {
+            while cpu.pc != 0xEBb9 {
                 let write_string = hex::encode(&cpu.pc.to_be_bytes());
                 if let Err(e) = writeln!(file, "{}", write_string.to_uppercase()) {
                     eprintln!("Couldn't write to file: {}", e);
