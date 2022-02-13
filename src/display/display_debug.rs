@@ -4,20 +4,19 @@ use std::fs;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::rc::Rc;
-use graphics::{clear};
+
+use graphics::clear;
 use image::{ImageBuffer, Rgba};
-use image::png::CompressionType::Default;
 use opengl_graphics::{GlyphCache, Texture, TextureSettings};
 use piston::{Button, Key, PressEvent};
 use piston::event_loop::{Events, EventSettings};
-use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
-use pixel_canvas::input::Event;
-use crate::display::display::{Game, get_scaled_context, NesSystem};
-use crate::display::draw_debug::draw_debug;
-use crate::display::draw_pixels::draw_pixels;
-use crate::display::{EMU_HEIGHT, EMU_WIDTH};
+use piston::input::{RenderArgs, RenderEvent, UpdateEvent};
+
 use crate::{Cpu, Ppu, State};
-use crate::{advance, create_system};
+use crate::advance;
+use crate::display::{EMU_HEIGHT, EMU_WIDTH};
+use crate::display::display::{Game, NesSystem};
+use crate::display::draw_debug::draw_debug;
 
 struct Debug {
     data: HashMap<String, HashMap<u32, String>>,
@@ -27,19 +26,18 @@ struct Debug {
 pub struct NesDebug(NesSystem, Debug);
 
 impl NesDebug {
-
     pub fn new(
         state: Rc<RefCell<State>>,
         cpu: Rc<RefCell<Cpu>>,
         ppu: Rc<RefCell<Ppu>>,
-        visible_pages: Vec<u16>
+        visible_pages: Vec<u16>,
     ) -> NesDebug {
         NesDebug(
             NesSystem::new(state, cpu, ppu),
             Debug {
                 data: HashMap::default(),
-                visible_pages
-            }
+                visible_pages,
+            },
         )
     }
 
@@ -59,7 +57,7 @@ impl NesDebug {
     fn render(&mut self,
               args: RenderArgs,
               mut d_img: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
-              mut texture: &mut Texture
+              mut texture: &mut Texture,
     ) {
         let disassembly = self.get_disassembly();
 
@@ -85,11 +83,11 @@ impl Game for NesDebug {
     fn start(&mut self) {
         let settings = EventSettings {
             max_fps: 60,
-            ups: 1000,
+            ups: 10000,
             swap_buffers: true,
             bench_mode: false,
             lazy: false,
-            ups_reset: 2,
+            ups_reset: 0,
         };
         let mut events = Events::new(settings);
         let mut d_img = ImageBuffer::from_fn(EMU_WIDTH, EMU_HEIGHT, |x, y| {
@@ -109,7 +107,7 @@ impl Game for NesDebug {
         {
             let mut cpu = self.0.cpu.as_ref().borrow_mut();
             let mut ppu = self.0.ppu.as_ref().borrow_mut();
-            while cpu.pc != 0xEF07 {
+            while cpu.pc != 0xEEE2 {
                 let write_string = hex::encode(&cpu.pc.to_be_bytes());
                 if let Err(e) = writeln!(file, "{}", write_string.to_uppercase()) {
                     eprintln!("Couldn't write to file: {}", e);

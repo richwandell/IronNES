@@ -977,15 +977,6 @@ impl Cpu {
 
         self.ora();
 
-        // self.fetch();
-        //
-        // let temp = ((self.a as u16) | (self.fetched as u16)) - (add as u16);
-        //
-        // self.a = temp as u8;
-        //
-        // self.set_flag(N, self.a & 0x80 > 0);
-        // self.set_flag(Z, self.a == 0x00);
-
         return false;
     }
 

@@ -22,7 +22,7 @@ pub(crate) fn make_instructions() -> Vec<Instruction> {
         Instruction { name: "Bpl".to_string(), operate: Opcodes::Bpl, addr: AddressModes::Rel, cycles: 2 },
         Instruction { name: "Ora".to_string(), operate: Opcodes::Ora, addr: AddressModes::Izy, cycles: 5 },
         Instruction { name: "???".to_string(), operate: Opcodes::Xxx, addr: AddressModes::Imp, cycles: 2 },
-        Instruction { name: "*Slo".to_string(), operate: Opcodes::Slo, addr: AddressModes::Izx, cycles: 8 }, //OpCode::new(0x13, "*SLO", 2, 8, AddressingMode::Indirect_Y),
+        Instruction { name: "*Slo".to_string(), operate: Opcodes::Slo, addr: AddressModes::Izy, cycles: 8 }, //OpCode::new(0x13, "*SLO", 2, 8, AddressingMode::Indirect_Y),
         Instruction { name: "???".to_string(), operate: Opcodes::Nop, addr: AddressModes::Zpx, cycles: 4 },
         Instruction { name: "Ora".to_string(), operate: Opcodes::Ora, addr: AddressModes::Zpx, cycles: 4 },
         Instruction { name: "Asl".to_string(), operate: Opcodes::Asl, addr: AddressModes::Zpx, cycles: 6 },
