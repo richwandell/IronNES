@@ -21,6 +21,9 @@ use crate::display::draw_debug::draw_debug;
 struct Debug {
     data: HashMap<String, HashMap<u32, String>>,
     visible_pages: Vec<u16>,
+    event_settings: EventSettings,
+    start_instruction: u16,
+    last_instruction: u16
 }
 
 pub struct NesDebug(NesSystem, Debug);
@@ -31,12 +34,18 @@ impl NesDebug {
         cpu: Rc<RefCell<Cpu>>,
         ppu: Rc<RefCell<Ppu>>,
         visible_pages: Vec<u16>,
+        event_settings: EventSettings,
+        start_instruction: u16,
+        last_instruction: u16
     ) -> NesDebug {
         NesDebug(
             NesSystem::new(state, cpu, ppu),
             Debug {
                 data: HashMap::default(),
                 visible_pages,
+                event_settings,
+                start_instruction,
+                last_instruction
             },
         )
     }
@@ -81,14 +90,7 @@ impl NesDebug {
 
 impl Game for NesDebug {
     fn start(&mut self) {
-        let settings = EventSettings {
-            max_fps: 60,
-            ups: 10000,
-            swap_buffers: true,
-            bench_mode: false,
-            lazy: false,
-            ups_reset: 0,
-        };
+        let settings = self.1.event_settings;
         let mut events = Events::new(settings);
         let mut d_img = ImageBuffer::from_fn(EMU_WIDTH, EMU_HEIGHT, |x, y| {
             image::Rgba([255, 255, 255, 255])
@@ -107,12 +109,14 @@ impl Game for NesDebug {
         {
             let mut cpu = self.0.cpu.as_ref().borrow_mut();
             let mut ppu = self.0.ppu.as_ref().borrow_mut();
-            while cpu.pc != 0xEEE2 {
-                let write_string = hex::encode(&cpu.pc.to_be_bytes());
-                if let Err(e) = writeln!(file, "{}", write_string.to_uppercase()) {
-                    eprintln!("Couldn't write to file: {}", e);
+            if self.1.start_instruction != 0x0000 {
+                while cpu.pc != self.1.start_instruction {
+                    let write_string = hex::encode(&cpu.pc.to_be_bytes());
+                    if let Err(e) = writeln!(file, "{}", write_string.to_uppercase()) {
+                        eprintln!("Couldn't write to file: {}", e);
+                    }
+                    let _ = advance(&mut ppu, &mut cpu);
                 }
-                let _ = advance(&mut ppu, &mut cpu);
             }
         }
 
@@ -151,6 +155,13 @@ impl Game for NesDebug {
                     }
 
                     let _ = advance(&mut ppu, &mut cpu);
+                }
+            }
+
+            {
+                let cpu = self.0.cpu.as_ref().borrow_mut();
+                if cpu.pc == self.1.last_instruction {
+                    break
                 }
             }
         }

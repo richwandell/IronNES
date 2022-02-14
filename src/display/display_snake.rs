@@ -104,9 +104,18 @@ impl Game for SnakeGame {
         let mut texture = Texture::from_image(&d_img, &TextureSettings::new());
         let rng = Rc::new(RefCell::new(thread_rng()));
 
+        let mut running = false;
         // Main loop
         while let Some(e) = events.next(&mut self.0.window) {
             if let Some(args) = e.press_args() {
+                match args {
+                    Button::Keyboard(key) => {
+                        if key.eq(&Key::Space) {
+                            running = !running;
+                        }
+                    }
+                    _ => {}
+                }
                 self.key_press(args);
             }
 
@@ -115,13 +124,15 @@ impl Game for SnakeGame {
             }
 
             if let Some(_args) = e.update_args() {
-                let mut ppu = self.0.ppu.as_ref().borrow_mut();
-                let mut cpu = self.0.cpu.as_ref().borrow_mut();
+                if running {
+                    let mut ppu = self.0.ppu.as_ref().borrow_mut();
+                    let mut cpu = self.0.cpu.as_ref().borrow_mut();
 
-                let val = rng.as_ref().borrow_mut().gen_range(1, 16);
-                cpu.write(0xfe, val);
+                    let val = rng.as_ref().borrow_mut().gen_range(1, 16);
+                    cpu.write(0xfe, val);
 
-                let _ = advance(&mut ppu, &mut cpu);
+                    let _ = advance(&mut ppu, &mut cpu);
+                }
             }
         }
     }

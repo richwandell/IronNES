@@ -153,7 +153,10 @@ impl Cpu {
                 Opcodes::Sax => self.sax(),
                 Opcodes::Dcp => self.dcp(),
                 Opcodes::Isb => self.isb(),
-                Opcodes::Slo => self.slo()
+                Opcodes::Slo => self.slo(),
+                Opcodes::Rla => self.rla(),
+                Opcodes::Sre => self.sre(),
+                Opcodes::Rra => self.rra(),
             };
 
             self.cycles += additional_cycle1;
@@ -956,27 +959,31 @@ impl Cpu {
         return false;
     }
 
-    // 	{adr}:={adr}*2 A:=A or {adr}
+    // {adr}:={adr}rol A:=A and {adr}
+    fn rla(&mut self) -> bool {
+        self.rol();
+        self.and();
+        return false;
+    }
+
+    //	{adr}:={adr}*2 A:=A or {adr}
     fn slo(&mut self) -> bool {
-
-        self.fetch();
-
-        let temp = ((self.fetched as u16) << 1);
-
-        self.set_flag(C, (temp & 0xFF00) > 0);
-
-        self.set_flag(Z, (temp & 0x00FF) == 0x0000);
-
-        self.set_flag(N, (temp & 0x0080) > 0);
-
-        if self.lookup[self.opcode as usize].addr == AddressModes::Imp {
-            self.a = (temp & 0x00FF) as u8;
-        } else {
-            self.write(self.addr_abs, (temp & 0x00FF) as u8);
-        }
-
+        self.asl();
         self.ora();
+        return false;
+    }
 
+    //	{adr}:={adr}/2 A:=A exor {adr}
+    fn sre(&mut self) -> bool {
+        self.lsr();
+        self.eor();
+        return false;
+    }
+
+    //	{adr}:={adr}ror A:=A adc {adr}
+    fn rra(&mut self) -> bool {
+        self.ror();
+        self.adc();
         return false;
     }
 
