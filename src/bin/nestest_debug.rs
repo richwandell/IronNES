@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::Read;
 use piston::EventSettings;
 use nes_emulator::{create_system};
-use nes_emulator::display::display::{Game, NesSystem};
+use nes_emulator::display::display::Game;
 use nes_emulator::display::display_debug::NesDebug;
 
 
@@ -27,10 +27,21 @@ fn main() {
         cpu.pc = 0x0c000;
     }
 
-    let mut game = NesSystem::new(
+    let mut game = NesDebug::new(
         state_ref.clone(),
         cpu_ref.clone(),
-        ppu_ref.clone()
+        ppu_ref.clone(),
+        vec![0x0000, 0x0600, 0xC600],
+        EventSettings {
+            max_fps: 60,
+            ups: 100,
+            swap_buffers: true,
+            bench_mode: false,
+            lazy: false,
+            ups_reset: 0,
+        },
+        0x0000,
+        0xC66E
     );
     game.start();
 }

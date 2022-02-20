@@ -1,8 +1,8 @@
-use std::cell::RefCell;
-use std::rc::Rc;
+
+
 use piston::{EventSettings};
-use nes_emulator::{advance, create_system};
-use rand::{Rng, thread_rng};
+use nes_emulator::{create_system};
+
 use nes_emulator::display::display::Game;
 use nes_emulator::display::display_debug::NesDebug;
 
@@ -20,7 +20,17 @@ fn main() {
         state_ref.clone(),
         cpu_ref.clone(),
         ppu_ref.clone(),
-        vec![0x0000, 0x8000]
+        vec![0x0000, 0x8000],
+        EventSettings {
+            max_fps: 60,
+            ups: 100,
+            swap_buffers: true,
+            bench_mode: false,
+            lazy: false,
+            ups_reset: 0,
+        },
+        0x0000,
+        0x001c
     );
     display.start();
 }

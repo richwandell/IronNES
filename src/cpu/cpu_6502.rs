@@ -1,12 +1,12 @@
 use std::cell::{Ref, RefCell, RefMut};
 use std::collections::HashMap;
-use std::ops::DerefMut;
+
 use std::rc::Rc;
-use graphics::math::add;
-use crate::bus::{Bus, cpu_read, cpu_write};
+
+use crate::bus::{cpu_read, cpu_write};
 use crate::cpu::Flags::{U, I, B, C, Z, V, N, D};
 use crate::cpu::{Flags, Opcodes, AddressModes};
-use crate::cpu::AddressModes::Imp;
+
 use crate::cpu::instructions::make_instructions;
 use crate::state::State;
 

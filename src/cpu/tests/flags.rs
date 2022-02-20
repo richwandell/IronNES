@@ -1,5 +1,4 @@
-use crate::bus::Bus;
-use crate::cpu::cpu_6502::Cpu;
+
 use crate::cpu::Flags::{I, B, C, Z, V, N, D};
 use crate::cpu::tests::create_devices;
 use crate::ppu::Ppu;

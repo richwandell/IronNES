@@ -1,11 +1,11 @@
 use std::borrow::BorrowMut;
-use std::cell::Ref;
-use crate::bus::Bus;
-use crate::cpu::cpu_6502::Cpu;
-use crate::cpu::{cpu_loop, real_loop};
+
+
+
+use crate::cpu::{real_loop};
 use crate::cpu::tests::create_devices;
-use crate::ppu::Ppu;
-use crate::state::State;
+
+
 
 fn run_test_code(code: Vec<u8>, offset: u16) -> Vec<u8> {
     create_devices!(ppu, cpu);

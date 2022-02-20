@@ -4,9 +4,9 @@ use glutin_window::OpenGL;
 use graphics::{clear};
 use image::{ImageBuffer, Rgba};
 use opengl_graphics::{GlGraphics, GlyphCache, Texture, TextureSettings};
-use piston::{PressEvent, WindowSettings};
+use piston::{Button, Key, PressEvent, UpdateEvent, WindowSettings};
 use piston::event_loop::{Events, EventSettings};
-use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
+use piston::input::{RenderArgs, RenderEvent};
 use crate::display::display::{Game, get_scaled_context, NesSystem};
 use crate::display::draw_pixels::draw_pixels;
 use crate::display::{EMU_HEIGHT, EMU_WIDTH};
@@ -47,8 +47,6 @@ impl NesSystem {
         let state = self.state.as_ref().borrow();
         let cpu = self.cpu.as_ref().borrow();
 
-        let mut glyphs: GlyphCache = GlyphCache::new("assets/PixelEmulator-xq08.ttf", (), TextureSettings::new()).unwrap();
-
         self.gl.draw(args.viewport(), |c, gl| {
             //Clear the screen
             clear([0.0, 0.0, 1.0, 1.0], gl);
@@ -62,27 +60,43 @@ impl NesSystem {
 
 impl Game for NesSystem {
     fn start(&mut self){
-        let mut events = Events::new(EventSettings::new());
+        let mut events = Events::new(EventSettings {
+            max_fps: 60,
+            ups: 100,
+            swap_buffers: true,
+            bench_mode: false,
+            lazy: false,
+            ups_reset: 0,
+        });
         let mut d_img = ImageBuffer::from_fn(EMU_WIDTH, EMU_HEIGHT, |x, y| {
             image::Rgba([255, 255, 255, 255])
         });
         let mut texture = Texture::from_image(&d_img, &TextureSettings::new());
         // Main loop
-
+        let mut running = false;
         while let Some(e) = events.next(&mut self.window) {
             if let Some(args) = e.press_args() {
-                let mut ppu = self.ppu.as_ref().borrow_mut();
-                let mut cpu = self.cpu.as_ref().borrow_mut();
-
-                if let Ok(_) = advance(&mut ppu, &mut cpu) {
-                    println!("{}", "clock ok");
-                } else {
-                    println!("{}", "clock not ok");
+                match args {
+                    Button::Keyboard(key) => {
+                        if key.eq(&Key::Space) {
+                            running = !running;
+                        }
+                    }
+                    _ => {}
                 }
             }
 
             if let Some(args) = e.render_args() {
                 self.render(args, &mut d_img, &mut texture);
+            }
+
+            if let Some(_args) = e.update_args() {
+                if running {
+                    let mut ppu = self.ppu.as_ref().borrow_mut();
+                    let mut cpu = self.cpu.as_ref().borrow_mut();
+
+                    let _ = advance(&mut ppu, &mut cpu);
+                }
             }
         }
     }

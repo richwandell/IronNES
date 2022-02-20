@@ -4,7 +4,13 @@ use crate::cpu::cpu_6502::Cpu;
 use crate::ppu::Ppu;
 use crate::state::State;
 
+const RAM: u16 = 0x0000;
+const RAM_MIRRORS_END: u16 = 0x1FFF;
+const PPU_REGISTERS: u16 = 0x2000;
+const PPU_REGISTERS_MIRRORS_END: u16 = 0x3FFF;
+
 pub(crate) fn cpu_read(state: &State, addr: u16, read_only: bool) -> u8 {
+
     let mut data: u8 = 0x00;
     if addr >= 0x0000 && addr <= 0xFFFF {
         data = state.cpu_ram[addr as usize];
