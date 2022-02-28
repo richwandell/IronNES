@@ -11,7 +11,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use rand::{Rng, thread_rng};
 use crate::{advance};
-use crate::bus::cpu_write;
+use crate::bus::mem_write;
 
 pub struct SnakeGame(NesSystem);
 
@@ -74,13 +74,13 @@ impl SnakeGame {
             Button::Keyboard(key) => {
                 println!("{:?}", key);
                 if key.eq(&Key::Up) {
-                    cpu_write(&mut state, 0xff, 0x77);
+                    mem_write(&mut state, 0xff, 0x77);
                 } else if key.eq(&Key::Down) {
-                    cpu_write(&mut state, 0xff, 0x73);
+                    mem_write(&mut state, 0xff, 0x73);
                 } else if key.eq(&Key::Left) {
-                    cpu_write(&mut state, 0xff, 0x61);
+                    mem_write(&mut state, 0xff, 0x61);
                 } else if key.eq(&Key::Right) {
-                    cpu_write(&mut state, 0xff, 0x64);
+                    mem_write(&mut state, 0xff, 0x64);
                 }
             }
             _ => {}

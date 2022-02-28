@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use std::rc::Rc;
 
-use crate::bus::{cpu_read, cpu_write};
+use crate::bus::{mem_read, mem_write};
 use crate::cpu::Flags::{U, I, B, C, Z, V, N, D};
 use crate::cpu::{Flags, Opcodes, AddressModes};
 
@@ -206,12 +206,12 @@ impl Cpu {
 
     fn read(&mut self, a: u16) -> u8 {
         let mut state = self.state.as_ref().expect("Missing state").as_ref().borrow_mut();
-        cpu_read(&mut state, a, false)
+        mem_read(&mut state, a, false)
     }
 
     pub fn write(&mut self, a: u16, d: u8) {
         let mut state = self.state.as_ref().expect("Missing state").as_ref().borrow_mut();
-        cpu_write(&mut state, a, d)
+        mem_write(&mut state, a, d)
     }
 
     pub fn reset(&mut self) {

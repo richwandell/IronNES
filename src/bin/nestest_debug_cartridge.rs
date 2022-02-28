@@ -1,30 +1,24 @@
-
-
+use std::cell::RefCell;
 use std::fs::File;
 use std::io::Read;
+use std::rc::Rc;
 use piston::EventSettings;
 use nes_emulator::{create_system};
 use nes_emulator::display::display::Game;
 use nes_emulator::display::display_debug::NesDebug;
-
+use nes_emulator::cartridge::Cartridge;
 
 fn main() {
-    let mut file = File::open("assets/nestest.nes").expect("File not found");
-    let mut buffer = Vec::new();
-    let _ = file.read_to_end(&mut buffer);
-
-    let file_slice = &buffer[0x0010..0x4000];
+    let cart = Cartridge::new("assets/nestest.nes");
     let (_bus_ref, cpu_ref, ppu_ref, state_ref) = create_system();
 
     {
         let mut state = state_ref.as_ref().borrow_mut();
-        state.load(file_slice.to_vec(), 0xC000);
-        state.load(file_slice.to_vec(), 0x8000);
+        state.connect_cartridge(Some(Rc::new(RefCell::new(cart))));
     }
     {
         let mut cpu = cpu_ref.as_ref().borrow_mut();
         cpu.reset();
-        cpu.pc = 0x0c000;
     }
 
     let mut game = NesDebug::new(

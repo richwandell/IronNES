@@ -8,9 +8,10 @@ use crate::state::State;
 pub mod display;
 mod cpu;
 mod ppu;
-mod cartridge;
+pub mod cartridge;
 mod bus;
 mod state;
+mod mapper;
 
 pub const COLOR_BLUE: [u8; 4] = [0, 0, 255, 255];
 pub const COLOR_WHITE: [u8; 4] = [255, 255, 255, 255];

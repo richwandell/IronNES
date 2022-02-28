@@ -3,7 +3,7 @@ use graphics::{Context, text, Transformed};
 use graphics::types::Color;
 use opengl_graphics::{GlGraphics, GlyphCache};
 use crate::{COLOR_BLUE, COLOR_WHITE, COLOR_GREEN, COLOR_RED, Cpu, State};
-use crate::bus::cpu_read;
+use crate::bus::mem_read;
 use crate::display::IColor;
 use crate::cpu::Flags;
 use crate::display::{EMU_HEIGHT, EMU_WIDTH};
@@ -149,7 +149,7 @@ pub(crate) fn draw_debug(
         for _ in 0..16 {
             let mut write_string = format!("${}:", hex::encode(&(addr as u16).to_be_bytes()));
             for _ in 0..16 {
-                let value = hex::encode(&cpu_read(&state, addr as u16, true).to_be_bytes());
+                let value = hex::encode(&mem_read(&state, addr as u16, true).to_be_bytes());
                 write_string = format!("{} {}", write_string, &value[value.len()-2..]);
                 addr += 1;
             }
