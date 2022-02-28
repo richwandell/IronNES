@@ -20,8 +20,8 @@ pub struct Cartridge {
     pub(crate) n_mapper_id: u8,
     pub(crate) n_prgbanks: u8,
     n_chrbanks: u8,
-    v_prg_memory: Vec<u8>,
-    v_chr_memory: Vec<u8>
+    pub(crate) v_prg_memory: Vec<u8>,
+    pub(crate) v_chr_memory: Vec<u8>
 }
 
 

@@ -21,7 +21,7 @@ impl Mapper for Mapper0 {
         return false;
     }
 
-    fn cpu_map_write(&mut self, state: State, addr: u16, mapped_addr: &mut u32) -> bool {
+    fn cpu_map_write(&mut self, state: &State, addr: u16, mapped_addr: &mut u32) -> bool {
         if addr >= 0x8000 && addr <= 0xffff {
             let cart = state.cartridge.as_ref().expect("Missing cart").as_ref().borrow_mut();
             let banks = cart.n_prgbanks;

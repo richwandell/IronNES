@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::rc::Rc;
 
 use crate::bus::mem_write;
@@ -30,6 +30,10 @@ impl State {
             cartridge: None,
             mapper: 0
         }
+    }
+
+    pub fn get_cartridge(&self) -> Ref<'_, Cartridge> {
+        self.cartridge.as_ref().expect("Missing cart").as_ref().borrow()
     }
 
     pub fn connect_cartridge(&mut self, cartridge: Option<Rc<RefCell<Cartridge>>>) {

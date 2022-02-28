@@ -23,20 +23,8 @@ pub(crate) fn mem_read(state: &State, addr: u16, read_only: bool) -> u8 {
     let mut mapper = state.get_mapper();
 
     if mapper.cpu_map_read(state, addr, &mut mapped_addr) {
-
-    }
-
-
-    // uint32_t mapped_addr = 0;
-    // if (pMapper->cpuMapRead(addr, mapped_addr))
-    // {
-    //     data = vPRGMemory[mapped_addr];
-    //     return true;
-    // }
-    // else
-    // return false;
-
-    if addr >= 0x0000 && addr <= 0x1FFF {
+        data = state.get_cartridge().v_prg_memory[mapped_addr as usize];
+    } else if addr >= 0x0000 && addr <= 0x1FFF {
         let location = addr & 0x07ff;
         data = state.cpu_ram[location as usize];
     } else if addr >= 0x2000 && addr <= 0x3fff {
@@ -52,7 +40,13 @@ pub(crate) fn mem_write(state: &mut State, addr: u16, data: u8) {
     // } else if addr >= 0x2000 && addr <= 0x3fff {
     //     state.ppu_ram[addr as usize] = data;
     // }
-    if  addr >= 0x0000 && addr <= 0x1FFF {
+    let mut mapped_addr = 0;
+    let mut mapper = state.get_mapper();
+
+    if mapper.cpu_map_write(state, addr, &mut mapped_addr) {
+        let mut cart = state.cartridge.as_ref().expect("Missing cart").as_ref().borrow_mut();
+        cart.v_prg_memory[mapped_addr as usize] = data;
+    } else if  addr >= 0x0000 && addr <= 0x1FFF {
         let location = addr & 0x07ff;
         state.cpu_ram[location as usize] = data;
     } else if addr >= 0x2000 && addr <= 0x3fff {
