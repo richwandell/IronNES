@@ -4,12 +4,11 @@ use glutin_window::OpenGL;
 use graphics::{clear};
 use image::{ImageBuffer, Rgba};
 use opengl_graphics::{GlGraphics, GlyphCache, Texture, TextureSettings};
-use piston::{Button, Key, PressEvent, UpdateEvent, WindowSettings};
+use piston::{AdvancedWindow, Button, Key, PressEvent, UpdateEvent, Window, WindowSettings};
 use piston::event_loop::{Events, EventSettings};
 use piston::input::{RenderArgs, RenderEvent};
 use crate::display::display::{Game, get_scaled_context, NesSystem};
 use crate::display::draw_pixels::draw_pixels;
-use crate::display::{EMU_HEIGHT, EMU_WIDTH};
 use crate::{Cpu, State, Ppu};
 use crate::{advance};
 
@@ -17,12 +16,15 @@ impl NesSystem {
     pub fn new(
         state: Rc<RefCell<State>>,
         cpu: Rc<RefCell<Cpu>>,
-        ppu: Rc<RefCell<Ppu>>
+        ppu: Rc<RefCell<Ppu>>,
+        width: u32,
+        height: u32,
+        extra_width: u32
     ) -> NesSystem {
 
         let opengl = OpenGL::V3_2;
 
-        let window = WindowSettings::new("IronNES", [EMU_WIDTH * 3, EMU_HEIGHT * 3])
+        let window = WindowSettings::new("IronNES", [width * 3 + extra_width, height * 3])
             .graphics_api(opengl)
             .exit_on_esc(true)
             .build()
@@ -68,7 +70,9 @@ impl Game for NesSystem {
             lazy: false,
             ups_reset: 0,
         });
-        let mut d_img = ImageBuffer::from_fn(EMU_WIDTH, EMU_HEIGHT, |x, y| {
+        let width = self.window.size().width;
+        let height = self.window.size().height;
+        let mut d_img = ImageBuffer::from_fn(width as u32, height as u32, |x, y| {
             image::Rgba([255, 255, 255, 255])
         });
         let mut texture = Texture::from_image(&d_img, &TextureSettings::new());

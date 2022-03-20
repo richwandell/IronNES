@@ -14,11 +14,15 @@ const PPU_REGISTERS_MIRRORS_END: u16 = 0x3FFF;
 pub(crate) fn mem_read(state: &State, addr: u16, read_only: bool) -> u8 {
 
     let mut data: u8 = 0x00;
-    // if addr >= 0x0000 && addr <= 0xFFFF {
-    //     data = state.cpu_ram[addr as usize];
-    // } else if addr >= 0x2000 && addr <= 0x3fff {
-    //     data = state.ppu_ram[addr as usize];
-    // }
+    if state.cartridge.is_none() {
+        if addr >= 0x0000 && addr <= 0xFFFF {
+            data = state.cpu_ram[addr as usize];
+        } else if addr >= 0x2000 && addr <= 0x3fff {
+            data = state.ppu_ram[addr as usize];
+        }
+        return data;
+    }
+
     let mut mapped_addr = 0;
     let mut mapper = state.get_mapper();
 
@@ -35,23 +39,26 @@ pub(crate) fn mem_read(state: &State, addr: u16, read_only: bool) -> u8 {
 }
 
 pub(crate) fn mem_write(state: &mut State, addr: u16, data: u8) {
-    // if  addr >= 0x0000 && addr <= 0xFFFF {
-    //     state.cpu_ram[addr as usize] = data;
-    // } else if addr >= 0x2000 && addr <= 0x3fff {
-    //     state.ppu_ram[addr as usize] = data;
-    // }
-    let mut mapped_addr = 0;
-    let mut mapper = state.get_mapper();
+    if state.cartridge.is_none() {
+        if  addr >= 0x0000 && addr <= 0xFFFF {
+            state.cpu_ram[addr as usize] = data;
+        } else if addr >= 0x2000 && addr <= 0x3fff {
+            state.ppu_ram[addr as usize] = data;
+        }
+    } else {
+        let mut mapped_addr = 0;
+        let mut mapper = state.get_mapper();
 
-    if mapper.cpu_map_write(state, addr, &mut mapped_addr) {
-        let mut cart = state.cartridge.as_ref().expect("Missing cart").as_ref().borrow_mut();
-        cart.v_prg_memory[mapped_addr as usize] = data;
-    } else if  addr >= 0x0000 && addr <= 0x1FFF {
-        let location = addr & 0x07ff;
-        state.cpu_ram[location as usize] = data;
-    } else if addr >= 0x2000 && addr <= 0x3fff {
-        let location = addr & 0x0007;
-        state.ppu_ram[location as usize] = data;
+        if mapper.cpu_map_write(state, addr, &mut mapped_addr) {
+            let mut cart = state.cartridge.as_ref().expect("Missing cart").as_ref().borrow_mut();
+            cart.v_prg_memory[mapped_addr as usize] = data;
+        } else if  addr >= 0x0000 && addr <= 0x1FFF {
+            let location = addr & 0x07ff;
+            state.cpu_ram[location as usize] = data;
+        } else if addr >= 0x2000 && addr <= 0x3fff {
+            let location = addr & 0x0007;
+            state.ppu_ram[location as usize] = data;
+        }
     }
 }
 
@@ -82,6 +89,20 @@ pub fn advance(ppu: &mut Ppu, cpu: &mut Cpu) -> Result<(), ()>{
             }
         }
         cpu.get_state_mut().n_system_clock_counter += 1;
+    }
+}
+
+pub fn system_clock(ppu: &mut Ppu, cpu: &mut Cpu) -> Result<(), ()>{
+    loop {
+        ppu.clock();
+        if cpu.get_state_mut().n_system_clock_counter % 3 == 0 {
+            let _ = cpu.clock();
+        }
+        cpu.get_state_mut().n_system_clock_counter += 1;
+        if ppu.frame_complete {
+            ppu.frame_complete = false;
+            return Ok(());
+        }
     }
 }
 

@@ -5,7 +5,7 @@ use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::rc::Rc;
 
-use graphics::clear;
+use graphics::{clear, Image, Transformed};
 use image::{ImageBuffer, Rgba};
 use opengl_graphics::{GlyphCache, Texture, TextureSettings};
 use piston::{Button, Key, PressEvent};
@@ -14,38 +14,33 @@ use piston::input::{RenderArgs, RenderEvent, UpdateEvent};
 
 use crate::{Cpu, Ppu, State};
 use crate::advance;
+use crate::bus::system_clock;
 use crate::display::{EMU_HEIGHT, EMU_WIDTH};
-use crate::display::display::{Game, NesSystem};
-use crate::display::draw_debug::draw_debug;
+use crate::display::display::{Game, get_scaled_context, NesSystem};
+use crate::display::draw_debug::{draw_cart_debug, draw_debug};
 
 struct Debug {
     data: HashMap<String, HashMap<u32, String>>,
     visible_pages: Vec<u16>,
-    event_settings: EventSettings,
-    start_instruction: u16,
-    last_instruction: u16
+    event_settings: EventSettings
 }
 
-pub struct NesDebug(NesSystem, Debug);
+pub struct NesDebugCartridge(NesSystem, Debug);
 
-impl NesDebug {
+impl NesDebugCartridge {
     pub fn new(
         state: Rc<RefCell<State>>,
         cpu: Rc<RefCell<Cpu>>,
         ppu: Rc<RefCell<Ppu>>,
         visible_pages: Vec<u16>,
         event_settings: EventSettings,
-        start_instruction: u16,
-        last_instruction: u16
-    ) -> NesDebug {
-        NesDebug(
-            NesSystem::new(state, cpu, ppu, EMU_WIDTH, EMU_HEIGHT, 0),
+    ) -> NesDebugCartridge {
+        NesDebugCartridge(
+            NesSystem::new(state, cpu, ppu, EMU_WIDTH, EMU_HEIGHT, 300),
             Debug {
                 data: HashMap::default(),
                 visible_pages,
-                event_settings,
-                start_instruction,
-                last_instruction
+                event_settings
             },
         )
     }
@@ -63,10 +58,10 @@ impl NesDebug {
         self.1.data.insert("disassembly".to_string(), disassembly);
     }
 
-    fn render(&mut self,
-              args: RenderArgs,
-              mut d_img: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
-              mut texture: &mut Texture,
+    fn render(
+        &mut self, args: RenderArgs,
+        mut d_img: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
+        mut texture: &mut Texture
     ) {
         let disassembly = self.get_disassembly();
 
@@ -79,7 +74,24 @@ impl NesDebug {
             self.0.gl.draw(args.viewport(), |c, gl| {
                 //Clear the screen
                 clear([0.0, 0.0, 1.0, 1.0], gl);
-                draw_debug(&*state, &*cpu, c, &mut glyphs, &disassembly, gl, visible_pages);
+                draw_cart_debug(&*state, &*cpu, c, &mut glyphs, &disassembly, gl, visible_pages);
+
+                let size = c.get_view_size();
+                let x_scaler = (size[0] - 300.0) / EMU_WIDTH as f64;
+                let y_scaler = size[1] / EMU_HEIGHT as f64;
+                let context = c.scale(x_scaler, y_scaler);
+
+                // let context = get_scaled_context(c);
+
+
+                for row in 0..EMU_HEIGHT {
+                    for col in 0..EMU_WIDTH {
+                        d_img.put_pixel(col, row, state.screen[row as usize][col as usize]);
+                    }
+                }
+
+                texture.update(&d_img);
+                Image::new().draw(texture, &context.draw_state, context.transform, gl);
             });
         }
         {
@@ -88,7 +100,7 @@ impl NesDebug {
     }
 }
 
-impl Game for NesDebug {
+impl Game for NesDebugCartridge {
     fn start(&mut self) {
         let settings = self.1.event_settings;
         let mut events = Events::new(settings);
@@ -98,27 +110,7 @@ impl Game for NesDebug {
         let mut texture = Texture::from_image(&d_img, &TextureSettings::new());
         // Main loop
         let mut running = false;
-        let _ = fs::remove_file("junk/debug.csv");
-        let _ = File::create("junk/debug.csv");
-        let mut file = OpenOptions::new()
-            .write(true)
-            .append(true)
-            .open("junk/debug.csv")
-            .unwrap();
-
-        {
-            let mut cpu = self.0.cpu.as_ref().borrow_mut();
-            let mut ppu = self.0.ppu.as_ref().borrow_mut();
-            if self.1.start_instruction != 0x0000 {
-                while cpu.pc != self.1.start_instruction {
-                    let write_string = hex::encode(&cpu.pc.to_be_bytes());
-                    if let Err(e) = writeln!(file, "{}", write_string.to_uppercase()) {
-                        eprintln!("Couldn't write to file: {}", e);
-                    }
-                    let _ = advance(&mut ppu, &mut cpu);
-                }
-            }
-        }
+        let mut updated = false;
 
         while let Some(e) = events.next(&mut self.0.window) {
             if let Some(args) = e.press_args() {
@@ -129,12 +121,7 @@ impl Game for NesDebug {
                         } else {
                             let mut ppu = self.0.ppu.as_ref().borrow_mut();
                             let mut cpu = self.0.cpu.as_ref().borrow_mut();
-                            let write_string = hex::encode(&cpu.pc.to_be_bytes());
-                            if let Err(e) = writeln!(file, "{}", write_string.to_uppercase()) {
-                                eprintln!("Couldn't write to file: {}", e);
-                            }
-
-                            let _ = advance(&mut ppu, &mut cpu);
+                            let _ = system_clock(&mut ppu, &mut cpu);
                         }
                     }
                     _ => {}
@@ -149,19 +136,8 @@ impl Game for NesDebug {
                 if running {
                     let mut ppu = self.0.ppu.as_ref().borrow_mut();
                     let mut cpu = self.0.cpu.as_ref().borrow_mut();
-                    let write_string = hex::encode(&cpu.pc.to_be_bytes());
-                    if let Err(e) = writeln!(file, "{}", write_string.to_uppercase()) {
-                        eprintln!("Couldn't write to file: {}", e);
-                    }
-
-                    let _ = advance(&mut ppu, &mut cpu);
-                }
-            }
-
-            {
-                let cpu = self.0.cpu.as_ref().borrow_mut();
-                if cpu.pc == self.1.last_instruction {
-                    break
+                    let _ = system_clock(&mut ppu, &mut cpu);
+                    updated = true;
                 }
             }
         }

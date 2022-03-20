@@ -5,6 +5,9 @@ use crate::bus::mem_write;
 use crate::cartridge::Cartridge;
 use crate::mapper::Mapper;
 use crate::mapper::mapper0::Mapper0;
+use crate::display::{EMU_HEIGHT, EMU_WIDTH};
+use image::{ImageBuffer, Rgba};
+use opengl_graphics::{Texture, TextureSettings};
 
 pub struct State {
     pub(crate) cpu_ram: Vec<u8>,
@@ -14,13 +17,25 @@ pub struct State {
     pub(crate) ppu_palette_table: Vec<u8>,
     pub(crate) n_system_clock_counter: usize,
     pub cartridge: Option<Rc<RefCell<Cartridge>>>,
-    pub mapper: usize
+    pub mapper: usize,
+    pub screen: Vec<Vec<Rgba<u8>>>,
 }
 
 impl State {
 
     pub fn new() -> State {
+        let mut screen: Vec<Vec<Rgba<u8>>> = vec![];
+
+        for _ in 0..EMU_HEIGHT {
+            let mut row = vec![];
+            for _ in 0..EMU_WIDTH {
+                row.push(image::Rgba([0, 0, 0, 255]));
+            }
+            screen.push(row);
+        }
+
         State {
+            screen,
             cpu_ram: vec![0; 64 * 1024],
             ppu_ram: vec![0; 2048],
             code_end: 0,

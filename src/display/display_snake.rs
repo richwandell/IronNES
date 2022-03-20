@@ -32,7 +32,7 @@ fn color(byte: u8) -> [u8; 4] {
 impl SnakeGame {
 
     pub fn new(state: Rc<RefCell<State>>, cpu: Rc<RefCell<Cpu>>, ppu: Rc<RefCell<Ppu>>) -> SnakeGame {
-        SnakeGame(NesSystem::new(state, cpu, ppu))
+        SnakeGame(NesSystem::new(state, cpu, ppu, EMU_WIDTH, EMU_HEIGHT, 0))
     }
 
     fn render(&mut self,

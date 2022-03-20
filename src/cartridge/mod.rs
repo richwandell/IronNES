@@ -45,7 +45,7 @@ impl Cartridge {
         };
 
 
-        if (header.mapper1 & 0x04) == 0x00 {
+        if (header.mapper1 & 0x04) > 0x00 {
             let mut buffer_trash: [u8; 512] = [0; 512];
             file.read(&mut buffer_trash).expect("Cannot read from cartridge file");
         }

@@ -3,8 +3,8 @@ extern crate graphics;
 extern crate glutin_window;
 extern crate opengl_graphics;
 
-const EMU_WIDTH: u32 = 256;
-const EMU_HEIGHT: u32 = 240;
+pub(crate) const EMU_WIDTH: u32 = 256;
+pub(crate) const EMU_HEIGHT: u32 = 240;
 
 #[derive(Debug)]
 pub(crate) struct IColor {
@@ -42,3 +42,4 @@ pub mod display;
 pub mod display_snake;
 pub mod display_nes;
 pub mod display_debug;
+pub mod display_debug_cartridge;
